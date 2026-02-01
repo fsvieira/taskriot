@@ -61,7 +61,7 @@ Key features include:
    The app will be available at `http://localhost:5173` (default Vite port).
 
 3. **For production**:
-   - Backend: `npm run prod` (runs on port 3003).
+   - Backend: `npm run start` (runs on port 3003).
    - Frontend: `npm run build` then `npm run prod` (serves on port 3002).
 
 ## Usage
