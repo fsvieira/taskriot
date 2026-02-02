@@ -5,6 +5,7 @@ import { observer } from "mobx-react-lite";
 import { projectStore } from "../stores/ProjectStore";
 import TodoItem from "../components/tasks/TodoItem";
 import HabitsWidget from "../components/HabitsWidget";
+import Planner from "../pages/Planner";
 import TaskTimelineChart from "../components/TaskTimelineChart";
 import dayjs from 'dayjs';
 import io from "socket.io-client";
@@ -81,7 +82,7 @@ const ProjectsQueue = observer(() => {
     if (newValue === 0) {
       projectStore.switchQueue("todo");
     }
-    // For tab 1 (habits), no queue switch needed
+    // For tab 1 (habits) and tab 2 (planner), no queue switch needed
   };
 
 
@@ -91,6 +92,7 @@ const ProjectsQueue = observer(() => {
       <Tabs value={activeTab} onChange={handleTabChange} sx={{ mb: 2 }}>
         <Tab label={t('pages.queue.taskFocus')} />
         <Tab label={t('navigation.habits')} />
+        <Tab label={t('navigation.planner')} />
       </Tabs>
 
       {activeTab === 0 && (
@@ -99,6 +101,10 @@ const ProjectsQueue = observer(() => {
 
       {activeTab === 1 && (
         <HabitsWidget />
+      )}
+
+      {activeTab === 2 && (
+        <Planner />
       )}
     </Box>
   );

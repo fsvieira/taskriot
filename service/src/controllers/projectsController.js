@@ -33,6 +33,29 @@ export const getAllProjects = async (req, res) => {
   res.json(enrichedProjects);
 };
 
+export const getProjectsWithoutVision = async (req, res) => {
+  try {
+    // Get all projects
+    const projects = await req.db('projects').select('id', 'name');
+
+    // Get project IDs that have at least one VISION task
+    const projectsWithVision = await req.db('tasks')
+      .select('project_id')
+      .where('type', 'VISION')
+      .distinct();
+
+    const visionProjectIds = new Set(projectsWithVision.map(p => p.project_id));
+
+    // Filter projects that don't have VISION tasks
+    const projectsWithoutVision = projects.filter(p => !visionProjectIds.has(p.id));
+
+    res.json(projectsWithoutVision);
+  } catch (err) {
+    console.error('Erro ao buscar projetos sem visão:', err);
+    res.status(500).json({ error: 'errors.internal.getProjectsWithoutVision' });
+  }
+};
+
 export const createProject = async (req, res) => {
   try {
     const {

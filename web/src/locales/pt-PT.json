@@ -6,6 +6,7 @@
   "navigation": {
     "projects": "Projetos",
     "habits": "Hábitos",
+    "planner": "Planeador",
     "queue": "Tarefas",
     "stats": "Estatísticas"
   },
@@ -206,6 +207,12 @@
       "taskFocus": "Foco",
       "noProjectsInQueue": "Nenhum projeto na fila.",
       "noPendingTasks": "Nenhuma tarefa pendente."
+    },
+    "planner": {
+      "title": "Planeador",
+      "comingSoon": "Funcionalidade de planeamento em breve...",
+      "visionPrompt": "Transporta-te para daqui a uma década: este projeto faz parte do teu dia a dia. Como é interagir com ele e qual é a sensação de o ver concretizado exatamente como sonhaste? Dica: Esquece as limitações atuais; foca-te na experiência ideal.",
+      "allProjectsHaveVision": "Todos os projetos já têm uma tarefa VISION definida!"
     },
     "stats": {
       "title": "Estatísticas",

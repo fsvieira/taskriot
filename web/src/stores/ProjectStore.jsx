@@ -615,6 +615,23 @@ class ProjectStore {
       throw err;
     }
   }
+
+  async fetchProjectsWithoutVision() {
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${baseUrl}/api/projects/without-vision`);
+      const projects = await response.json();
+      
+      runInAction(() => {
+        this.projectsWithoutVision = projects;
+      });
+      
+      return projects;
+    } catch (err) {
+      console.error("Erro ao buscar projetos sem visão:", err);
+      return [];
+    }
+  }
 }
 
 export const projectStore = new ProjectStore();

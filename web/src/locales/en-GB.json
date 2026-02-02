@@ -6,6 +6,7 @@
   "navigation": {
     "projects": "Projects",
     "habits": "Habits",
+    "planner": "Planner",
     "queue": "Tasks",
     "stats": "Statistics"
   },
@@ -206,6 +207,12 @@
       "taskFocus": "Focus",
       "noProjectsInQueue": "No projects in queue.",
       "noPendingTasks": "No pending tasks."
+    },
+    "planner": {
+      "title": "Planner",
+      "comingSoon": "Planner feature coming soon...",
+      "visionPrompt": "Transport yourself a decade from now: this project is part of your daily life. What is it like to interact with it and what does it feel like to see it completed exactly as you dreamed? Hint: Forget current limitations; focus on the ideal experience.",
+      "allProjectsHaveVision": "All projects already have a VISION task defined!"
     },
     "stats": {
       "title": "Statistics",

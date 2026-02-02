@@ -4,6 +4,7 @@ import * as controller from '../controllers/projectsController.js';
 const router = express.Router();
 
 router.get('/', controller.getAllProjects);
+router.get('/without-vision', controller.getProjectsWithoutVision);
 router.post('/', controller.createProject);
 router.put('/:id', controller.updateProject);
 router.delete('/:id', controller.deleteProject);
