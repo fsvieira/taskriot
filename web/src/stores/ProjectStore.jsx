@@ -267,6 +267,9 @@ class ProjectStore {
       const res = await fetch(`${baseUrl}/api/queues/${name}/projects`);
       const data = await res.json();
 
+      console.log('[QUEUE] Raw data received:', JSON.stringify(data, null, 2));
+      console.log('[QUEUE] First project keys:', Object.keys(data.projects?.[0] || {}));
+      
       // Preserve any previously fetched task trees to avoid flicker and extra fetches
       const prevQueue = this.queue || [];
       let mergedProjects = (data.projects || []).map(p => {
@@ -294,6 +297,14 @@ class ProjectStore {
         this.currentQueueName = name;
         this.loadingQueue = false;
       });
+
+      // Log ranking information to console
+      if (mergedProjects.length > 0) {
+        console.log('[QUEUE] Projects sorted by potential:');
+        mergedProjects.forEach((p, idx) => {
+          console.log(`  #${idx + 1} "${p.name}": potential=${p.potential?.toFixed(2) || 'N/A'}, velocity=${p.velocity?.toFixed(2) || 'N/A'}, rank=${p.rank || 'N/A'}`);
+        });
+      }
 
       // Ensure the project with the active timer is shown at the top (no persistence)
       if (!skipBringActive) {

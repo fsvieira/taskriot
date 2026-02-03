@@ -1,8 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-const RANK_AVG_WEIGHT = parseFloat(process.env.RANK_AVG_WEIGHT) || 0.5;
-const EMOTIONAL_WEIGHT = parseFloat(process.env.EMOTIONAL_WEIGHT) || 0.5;
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 dayjs.extend(utc);
@@ -142,92 +140,68 @@ async function getProjectTaskStatsByPeriod(db, projectIds) {
   return { todayStats, weekStats, monthStats };
 }
 
-// Função auxiliar para calcular rankings de projetos
-function calculateProjectRanks(projects) {
-  // Função para calcular ranks para um dado critério
-  const calcRanks = (projects, getValue, rankKey, direction = 'asc') => {
-    const sorted = projects
-      .slice()
-      .sort((a, b) => {
-        const valA = getValue(a);
-        const valB = getValue(b);
-        if (valA !== valB) {
-          if (direction === 'desc') {
-            return valB - valA; // higher first
-          } else {
-            return valA - valB; // lower first
-          }
-        }
-        // Tie-breaker: older last_completed first
-        return new Date(a.last_completed) - new Date(b.last_completed);
-      });
-    sorted.forEach((p, idx) => { p[rankKey] = idx + 1; });
-  };
+// Função auxiliar para calcular rankings de projetos usando o novo algoritmo
+function calculateProjectRanks(projects, now) {
+  if (!projects || projects.length === 0) return projects;
 
-  // Critérios de ranking
-  const rankingCriteria = [
-    {
-      key: 'perc_global',
-      getValue: p => p.tasks.percent_closed ?? 0,
-    },
-    {
-      key: 'perc_today',
-      getValue: p => p.tasks.by_period.today.percent_closed ?? 0,
-    },
-    {
-      key: 'perc_week',
-      getValue: p => p.tasks.by_period.week.percent_closed ?? 0,
-    },
-    {
-      key: 'perc_month',
-      getValue: p => p.tasks.by_period.month.percent_closed ?? 0,
-    },
-    {
-      key: 'time_today',
-      getValue: p => Math.floor((p.timeToday ?? 0) / 1),
-    },
-    {
-      key: 'time_week',
-      getValue: p => Math.floor((p.timeThisWeek ?? 0) / 2),
-    },
-    {
-      key: 'time_month',
-      getValue: p => Math.floor((p.timeThisMonth ?? 0) / 4),
-    },
-    {
-      key: 'time_total',
-      getValue: p => Math.floor((p.timeTotal ?? 0) / 8),
-    },
-    {
-      key: 'emotional_score',
-      getValue: p => p.emotional_score ?? 0,
-      direction: 'desc'
-    },
-  ];
+  // 1. Calcular a média global de conclusão (MPs)
+  const totalPercent = projects.reduce((sum, p) => sum + (p.tasks?.percent_closed || 0), 0);
+  const MPs = totalPercent / projects.length;
+  console.log('[RANK] MPs (global mean completion):', MPs.toFixed(2));
 
-  // Calcular ranks para cada critério
-  rankingCriteria.forEach(({ key, getValue, direction = 'asc' }) => {
-    calcRanks(projects, getValue, `${key}_rank`, direction);
+  // 2. Obter last_end_session para cada projeto
+  const projectsWithSessions = projects.map(p => {
+    const lastSessionEnd = p.last_end_session ? dayjs(p.last_end_session).utc() : null;
+    return {
+      ...p,
+      _lastSessionEnd: lastSessionEnd
+    };
   });
 
-  // Calcular média dos ranks sem ES
-  projects.forEach(p => {
-    const rankKeys = [
-      'perc_global_rank',
-      'perc_today_rank',
-      'perc_week_rank',
-      'perc_month_rank',
-      'time_today_rank',
-      'time_week_rank',
-      'time_month_rank',
-      'time_total_rank',
-    ];
-    p.rank_avg = rankKeys.reduce((sum, k) => sum + (p[k] ?? 0), 0) / rankKeys.length;
-    // Calcular rank final com peso para ES
-    p.final_rank = p.rank_avg * RANK_AVG_WEIGHT + p.emotional_score_rank * EMOTIONAL_WEIGHT;
+  // 3. Calcular velocidade (V_p) e potencial para cada projeto
+  projectsWithSessions.forEach(p => {
+    const ES = p.emotional_score || 2; // Emotional Score (1-3 scale, default 2)
+    const CP = p.tasks?.percent_closed || 0; // Completion Percentage
+    
+    // Velocidade: V_p = (ES * 0.7) + (MPs - CP) * 0.3
+    // Normalizar ES para 0-100 scale para consistência
+    const ESNormalized = (ES / 3) * 100; // Convert 1-3 to 0-100
+    const stabilityForce = MPs - CP; // Positive if below average (needs attention)
+    
+    p.velocity = (ESNormalized * 0.7) + (stabilityForce * 0.3);
+    
+    // Calcular tempo desde última sessão (em horas)
+    let hoursSinceLastSession = 0;
+    if (p._lastSessionEnd && p._lastSessionEnd.isValid()) {
+      hoursSinceLastSession = now.diff(p._lastSessionEnd, 'hour', true);
+    } else {
+      // Se nunca teve sessão, usar tempo desde criação (limitado a 24h)
+      hoursSinceLastSession = Math.min(now.diff(dayjs(p.created_at).utc(), 'hour', true), 24);
+    }
+    
+    // Potencial: Potential_p = (NOW() - last_end_session) * V_p
+    p.potential = hoursSinceLastSession * p.velocity;
+    
+    // Guardar valores para debug
+    p._mp = MPs;
+    p._cp = CP;
+    p._es = ESNormalized;
+    p._stabilityForce = stabilityForce;
+    p._hoursSinceLastSession = hoursSinceLastSession;
+    
+    console.log(`[RANK] Project "${p.name}": ES=${ES.toFixed(2)} (norm=${ESNormalized.toFixed(1)}), CP=${CP}%, stabilityForce=${stabilityForce.toFixed(1)}, velocity=${p.velocity.toFixed(2)}, hoursSinceLastSession=${hoursSinceLastSession.toFixed(1)}, potential=${p.potential.toFixed(2)}`);
   });
 
-  return projects;
+  // 4. Ordenar por potencial (maior no topo)
+  projectsWithSessions.sort((a, b) => b.potential - a.potential);
+
+  // 5. Atribuir rank baseado na posição
+  projectsWithSessions.forEach((p, idx) => {
+    p.rank = idx + 1;
+    console.log(`[RANK] Final rank for "${p.name}": #${p.rank} (potential: ${p.potential?.toFixed(2) || 'N/A'})`);
+  });
+
+  return projectsWithSessions;
 }
 
 export const getQueueProjects = async (req, res) => {
@@ -297,7 +271,19 @@ export const getQueueProjects = async (req, res) => {
     // Stats por período
     const { todayStats, weekStats, monthStats } = await getProjectTaskStatsByPeriod(db, mergedQueue);
 
-    // 4.5. Última tarefa concluída por projeto
+    // 4.5. Última sessão terminada por projeto (para cálculo de potencial)
+    const lastSessionRows = await db('project_sessions')
+      .select('project_id')
+      .whereIn('project_id', mergedQueue)
+      .whereNotNull('end_counter')
+      .groupBy('project_id')
+      .select(db.raw('MAX(end_counter) as last_end_session'));
+    const lastSessionMap = {};
+    for (const row of lastSessionRows) {
+      lastSessionMap[row.project_id] = row.last_end_session;
+    }
+
+    // 4.6. Última tarefa concluída por projeto
     const lastCompletedRows = await db('tasks')
       .select('project_id')
       .whereIn('project_id', mergedQueue)
@@ -362,6 +348,7 @@ export const getQueueProjects = async (req, res) => {
           emotional_average: emotionalData[id].emotional_average,
           emotional_score: emotionalData[id].emotional_score,
           last_completed: lastCompletedMap[id] || p.created_at,
+          last_end_session: lastSessionMap[id] || null,
           tasks: {
             total_open: taskStats[id]?.open || 0,
             total_closed: taskStats[id]?.closed || 0,
@@ -388,19 +375,21 @@ export const getQueueProjects = async (req, res) => {
       })
       .filter(Boolean);
 
-    // Ordenar projetos pelo final_rank para exibir sempre ordenados
-    calculateProjectRanks(orderedProjects);
-    // Pre-sort by last_completed for stability
-    orderedProjects.sort((a, b) => new Date(a.last_completed) - new Date(b.last_completed));
-    // Then sort by final_rank (stable due to pre-sort)
-    orderedProjects.sort((a, b) => a.final_rank - b.final_rank);
+    // Ordenar projetos pelo rank (baseado em potencial)
+    const nowJs = dayjs().utc();
+    const rankedProjects = calculateProjectRanks(orderedProjects, nowJs);
+    
+    // Log what we're sending
+    console.log('[RANK] Sending response with projects:');
+    rankedProjects.forEach(p => {
+      console.log(`  - ${p.name}: potential=${p.potential?.toFixed(2)}, velocity=${p.velocity?.toFixed(2)}, rank=${p.rank}`);
+    });
 
     res.json({
       id: queueId,
       name: queueName,
       project_ids: mergedQueue,
-      projects: orderedProjects,
-      ranking_weights: { rank_avg: RANK_AVG_WEIGHT, emotional: EMOTIONAL_WEIGHT }
+      projects: rankedProjects
     });
 
   } catch (err) {
@@ -458,7 +447,19 @@ export const reorderQueue = async (req, res) => {
     // Stats por período
     const { todayStats, weekStats, monthStats } = await getProjectTaskStatsByPeriod(db, mergedQueue);
 
-    // 3.5. Última tarefa concluída por projeto
+    // 3.5. Última sessão terminada por projeto (para cálculo de potencial)
+    const lastSessionRowsReorder = await db('project_sessions')
+      .select('project_id')
+      .whereIn('project_id', mergedQueue)
+      .whereNotNull('end_counter')
+      .groupBy('project_id')
+      .select(db.raw('MAX(end_counter) as last_end_session'));
+    const lastSessionMapReorder = {};
+    for (const row of lastSessionRowsReorder) {
+      lastSessionMapReorder[row.project_id] = row.last_end_session;
+    }
+
+    // 3.6. Última tarefa concluída por projeto
     const lastCompletedRowsReorder = await db('tasks')
       .select('project_id')
       .whereIn('project_id', mergedQueue)
@@ -523,6 +524,7 @@ export const reorderQueue = async (req, res) => {
           emotional_average: emotionalData[id].emotional_average,
           emotional_score: emotionalData[id].emotional_score,
           last_completed: lastCompletedMapReorder[id] || p.created_at,
+          last_end_session: lastSessionMapReorder[id] || null,
           tasks: {
             total_open: taskStats[id]?.open || 0,
             total_closed: taskStats[id]?.closed || 0,
@@ -550,13 +552,16 @@ export const reorderQueue = async (req, res) => {
       .filter(Boolean);
 
 
-    // Calcular rankings usando função auxiliar e ordenar
-    calculateProjectRanks(orderedProjects);
-    // Pre-sort by last_completed for stability
-    orderedProjects.sort((a, b) => new Date(a.last_completed) - new Date(b.last_completed));
-    // Then sort by final_rank (stable due to pre-sort)
-    orderedProjects.sort((a, b) => a.final_rank - b.final_rank);
-    const reorderedIds = orderedProjects.map(p => p.id);
+    // Calcular rankings usando o novo algoritmo e ordenar
+    const nowJs = dayjs().utc();
+    const rankedProjects = calculateProjectRanks(orderedProjects, nowJs);
+    const reorderedIds = rankedProjects.map(p => p.id);
+    
+    // Log what we're sending
+    console.log('[RANK] Reorder response with projects:');
+    rankedProjects.forEach(p => {
+      console.log(`  - ${p.name}: potential=${p.potential?.toFixed(2)}, velocity=${p.velocity?.toFixed(2)}, rank=${p.rank}`);
+    });
 
     // 5. Atualizar ordem na BD
     if (queueRow) {
@@ -570,8 +575,7 @@ export const reorderQueue = async (req, res) => {
       id: queueRow?.id,
       name: queueName,
       project_ids: reorderedIds,
-      projects: orderedProjects,
-      ranking_weights: { rank_avg: RANK_AVG_WEIGHT, emotional: EMOTIONAL_WEIGHT }
+      projects: rankedProjects
     });
 
   } catch (err) {
