@@ -176,8 +176,8 @@ function calculateProjectRanks(projects, now) {
     if (p._lastSessionEnd && p._lastSessionEnd.isValid()) {
       hoursSinceLastSession = now.diff(p._lastSessionEnd, 'hour', true);
     } else {
-      // Se nunca teve sessão, usar tempo desde criação (limitado a 24h)
-      hoursSinceLastSession = Math.min(now.diff(dayjs(p.created_at).utc(), 'hour', true), 24);
+      // Se nunca teve sessão, usar tempo desde criação (sem limite)
+      hoursSinceLastSession = now.diff(dayjs(p.created_at).utc(), 'hour', true);
     }
     
     // Potencial: Potential_p = (NOW() - last_end_session) * V_p
