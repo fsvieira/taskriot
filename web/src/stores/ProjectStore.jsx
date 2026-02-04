@@ -21,7 +21,6 @@ class ProjectStore {
   timerInterval = null;
   autoSaveInterval = null;
 
-  rotateCounter = 0;
   forcePlay = false;
   forcePlayDuration = null;
 
@@ -186,32 +185,6 @@ class ProjectStore {
     });
   }
 
-  // Bring currently active timer's project to the front of the queue (optionally persist)
-  bringActiveProjectToFront(persist = false) {
-    const activeId = this.timerState.activeProjectId;
-    if (!activeId || !Array.isArray(this.queue) || this.queue.length === 0) return;
-
-    const idx = this.queue.findIndex(p => p.id === activeId);
-    if (idx <= 0) return; // already at front or not found
-
-    const project = this.queue[idx];
-    const newQueue = [
-      project,
-      ...this.queue.slice(0, idx),
-      ...this.queue.slice(idx + 1),
-    ];
-
-    runInAction(() => {
-      this.queue = newQueue;
-      this.currentProject = newQueue[0];
-    });
-
-    if (persist) {
-      this.saveQueue(newQueue.map(p => p.id));
-    }
-  }
-
-
   getTimerStateForProject(projectId) {
     return this.timerState.activeProjectId === projectId ? this.timerState : {
       timeLeft: 0,
@@ -221,7 +194,6 @@ class ProjectStore {
       activeProjectId: null
     };
   }
-
 
   async fetchProjects() {
     this.loadingProjects = true;
@@ -260,7 +232,7 @@ class ProjectStore {
     }
   }
 
-  async fetchQueue(name = this.currentQueueName, skipBringActive = false) {
+  async fetchQueue(name = this.currentQueueName) {
     this.loadingQueue = true;
     try {
       const baseUrl = import.meta.env.VITE_API_URL;
@@ -306,10 +278,8 @@ class ProjectStore {
         });
       }
 
-      // Ensure the project with the active timer is shown at the top (no persistence)
-      if (!skipBringActive) {
-        this.bringActiveProjectToFront(false);
-      }
+      // Ensure the queue is sorted by potential on every fetch
+      // The server already sorts by potential, so we just use the received order
     } catch (err) {
       console.error("Erro ao buscar queue:", err);
       runInAction(() => {
@@ -320,28 +290,6 @@ class ProjectStore {
 
   getRandomTaskTime = () => {
     return 60 * 60 * 1000;
-  }
-
-  async handleNext() {
-    this.pauseTimer(); // Garante que o timer para antes de avançar
-
-    if (this.queue.length > 0) {
-      const [first, ...rest] = this.queue;
-      const newQueue = [...rest, first];
-      this.queue = newQueue;
-      this.currentProject = this.queue[0] || null;
-
-      this.rotateCounter = this.rotateCounter + 1;
-      if (this.rotateCounter > 0 && this.rotateCounter % this.queue.length === 0) {
-        const baseUrl = import.meta.env.VITE_API_URL;
-        await fetch(`${baseUrl}/api/queues/${this.queueMeta.name}/reorder`, {
-          method: "POST",
-        });
-        await this.fetchQueue(this.queueMeta.name);
-      } else {
-        this.saveQueue(newQueue.map(p => p.id));
-      }
-    }
   }
 
   async startSession(projectId) {
@@ -438,21 +386,6 @@ class ProjectStore {
   async switchQueue(name) {
     if (this.currentQueueName !== name) {
       await this.fetchQueue(name);
-    }
-  }
-
-  async reorderTodoQueue() {
-    if (this.currentQueueName === 'todo') {
-      try {
-        const baseUrl = import.meta.env.VITE_API_URL;
-        await fetch(`${baseUrl}/api/queues/${this.currentQueueName}/reorder`, {
-          method: 'POST',
-        });
-        // Recarregar a queue após reordenação
-        await this.fetchQueue(this.currentQueueName);
-      } catch (err) {
-        console.error('Erro ao reordenar TODO queue:', err);
-      }
     }
   }
 

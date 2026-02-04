@@ -234,9 +234,6 @@ const TodoItem = observer(({ project, task, path, refreshTaskFocus }) => {
         // Busca a nova árvore de tarefas para este projeto (novo TODO leaf)
         await projectStore.fetchProjectTasks(project.id);
 
-        // Atualiza ordem da TODO queue no servidor e refaz fetch da queue (somente em 'todo')
-        await projectStore.reorderTodoQueue();
-
         // Refresh the entire Task Focus queue after completing a task
         if (refreshTaskFocus) {
           await refreshTaskFocus();
