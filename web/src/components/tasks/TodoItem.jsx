@@ -249,6 +249,8 @@ const TodoItem = observer(({ project, task, path, refreshTaskFocus }) => {
   const emotionalAverage = project.emotional_average ?? 2;
   const { icon: Icon, color } = getEmotionalIcon(emotionalAverage);
 
+  // Calculate potential percentage for the bar
+  const potentialPercentage = projectStore.getProjectPotentialPercentage(project.id);
 
   return (
     <Card
@@ -371,6 +373,21 @@ const TodoItem = observer(({ project, task, path, refreshTaskFocus }) => {
           </Box>
         </Box>
       </CardContent>
+
+      {/* Potential bar - thin dark blue bar at the bottom */}
+      <Box sx={{ 
+        height: 4, 
+        width: '100%', 
+        backgroundColor: '#e0e0e0',
+        position: 'relative'
+      }}>
+        <Box sx={{
+          height: '100%',
+          width: `${potentialPercentage}%`,
+          backgroundColor: '#0d47a1',
+          transition: 'width 0.3s ease'
+        }} />
+      </Box>
 
       <Dialog
         open={showStats}

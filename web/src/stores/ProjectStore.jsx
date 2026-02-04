@@ -195,6 +195,18 @@ class ProjectStore {
     };
   }
 
+  getTotalQueuePotential() {
+    return this.queue.reduce((sum, project) => sum + (project.potential || 0), 0);
+  }
+
+  getProjectPotentialPercentage(projectId) {
+    const total = this.getTotalQueuePotential();
+    if (total === 0) return 0;
+    const project = this.queue.find(p => p.id === projectId);
+    if (!project) return 0;
+    return ((project.potential || 0) / total) * 100;
+  }
+
   async fetchProjects() {
     this.loadingProjects = true;
     try {
