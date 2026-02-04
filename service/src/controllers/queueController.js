@@ -168,7 +168,8 @@ function calculateProjectRanks(projects, now) {
     const ESNormalized = (ES / 3) * 100; // Convert 1-3 to 0-100
     const stabilityForce = MPs - CP; // Positive if below average (needs attention)
     
-    p.velocity = (ESNormalized * 0.7) + (stabilityForce * 0.3);
+    const rawVelocity = (ESNormalized * 0.7) + (stabilityForce * 0.3);
+    p.velocity = Math.max(rawVelocity, 1); // Garantir que nunca é negativa
     
     // Calcular tempo desde última sessão (em horas)
     let hoursSinceLastSession = 0;
@@ -271,11 +272,13 @@ export const getQueueProjects = async (req, res) => {
     // Stats por período
     const { todayStats, weekStats, monthStats } = await getProjectTaskStatsByPeriod(db, mergedQueue);
 
-    // 4.5. Última sessão terminada por projeto (para cálculo de potencial)
+    // 4.5. Última sessão terminada por projeto (para cálculo de potencial) - ignora sessões activas (end_counter null) e sessões que terminaram há menos de 5 min
+    const fiveMinutesAgo = dayjs().utc().subtract(5, 'minute').toISOString();
     const lastSessionRows = await db('project_sessions')
       .select('project_id')
       .whereIn('project_id', mergedQueue)
       .whereNotNull('end_counter')
+      .where('end_counter', '<', fiveMinutesAgo)
       .groupBy('project_id')
       .select(db.raw('MAX(end_counter) as last_end_session'));
     const lastSessionMap = {};
@@ -447,11 +450,13 @@ export const reorderQueue = async (req, res) => {
     // Stats por período
     const { todayStats, weekStats, monthStats } = await getProjectTaskStatsByPeriod(db, mergedQueue);
 
-    // 3.5. Última sessão terminada por projeto (para cálculo de potencial)
+    // 3.5. Última sessão terminada por projeto (para cálculo de potencial) - ignora sessões activas (end_counter null) e sessões que terminaram há menos de 5 min
+    const fiveMinutesAgoReorder = dayjs().utc().subtract(5, 'minute').toISOString();
     const lastSessionRowsReorder = await db('project_sessions')
       .select('project_id')
       .whereIn('project_id', mergedQueue)
       .whereNotNull('end_counter')
+      .where('end_counter', '<', fiveMinutesAgoReorder)
       .groupBy('project_id')
       .select(db.raw('MAX(end_counter) as last_end_session'));
     const lastSessionMapReorder = {};
