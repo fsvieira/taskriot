@@ -65,8 +65,14 @@ const ProjectsQueue = observer(() => {
       }
     });
 
+    // Auto-refresh queue every 60 seconds to keep potential percentages updated
+    const refreshInterval = setInterval(() => {
+      projectStore.fetchQueue(projectStore.currentQueueName, true);
+    }, 60000);
+
     return () => {
       socket.disconnect();
+      if (refreshInterval) clearInterval(refreshInterval);
     };
   }, []);
 
