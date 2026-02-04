@@ -199,12 +199,17 @@ class ProjectStore {
     return this.queue.reduce((sum, project) => sum + (project.potential || 0), 0);
   }
 
+  getMaxQueuePotential() {
+    if (this.queue.length === 0) return 0;
+    return Math.max(...this.queue.map(p => p.potential || 0));
+  }
+
   getProjectPotentialPercentage(projectId) {
-    const total = this.getTotalQueuePotential();
-    if (total === 0) return 0;
+    const max = this.getMaxQueuePotential();
+    if (max === 0) return 0;
     const project = this.queue.find(p => p.id === projectId);
     if (!project) return 0;
-    return ((project.potential || 0) / total) * 100;
+    return ((project.potential || 0) / max) * 100;
   }
 
   async fetchProjects() {
