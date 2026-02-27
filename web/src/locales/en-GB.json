@@ -102,6 +102,7 @@
       "taskIdRequired": "Task ID is required.",
       "taskNotFound": "Task not found.",
       "cannotDeleteRoot": "Root task cannot be deleted.",
+      "cannotCompleteRoot": "Root task cannot be completed.",
       "cannotBeOwnParent": "A task cannot be its own parent.",
       "cannotMoveToDescendant": "Cannot move a task to one of its own descendants.",
       "taskIdsRequired": "An array of task IDs is required.",

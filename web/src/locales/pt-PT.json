@@ -102,6 +102,7 @@
       "taskIdRequired": "O ID da tarefa é obrigatório.",
       "taskNotFound": "Tarefa não encontrada.",
       "cannotDeleteRoot": "A tarefa raiz não pode ser apagada.",
+      "cannotCompleteRoot": "A tarefa raiz não pode ser concluída.",
       "cannotBeOwnParent": "Uma tarefa não pode ser pai dela própria.",
       "cannotMoveToDescendant": "Não é possível mover uma tarefa para um dos seus descendentes.",
       "taskIdsRequired": "É necessário um array de IDs de tarefas.",

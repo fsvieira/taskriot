@@ -266,6 +266,11 @@ export const updateTask = async (req, res) => {
 
     // Logic to close task (only for non-recurring)
     if (!task.is_recurring) {
+      // Prevent completing/closing root tasks
+      if (task.parent_id === null && (baseUpdates.completed === true || baseUpdates.state === 'closed')) {
+        return res.status(403).json({ error: 'errors.tasks.cannotCompleteRoot' });
+      }
+
       const willClose =
         (typeof baseUpdates.completed !== 'undefined' && !task.completed && baseUpdates.completed === true) ||
         (typeof baseUpdates.state !== 'undefined' && task.state !== 'closed' && baseUpdates.state === 'closed');
@@ -542,6 +547,11 @@ export const closeTaskRecursively = async (req, res) => {
 
       if (!task) {
         return res.status(404).json({ error: 'errors.tasks.taskNotFound' });
+      }
+
+      // Prevent closing root tasks
+      if (task.parent_id === null) {
+        return res.status(403).json({ error: 'errors.tasks.cannotCompleteRoot' });
       }
 
       // Fetch all tasks (within the transaction)

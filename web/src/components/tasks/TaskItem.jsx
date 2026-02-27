@@ -241,20 +241,24 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
                 mr: 1,
                 fontSize: '0.875rem',
                 fontWeight: 'bold',
-                cursor: 'pointer',
+                cursor: task.parent_id !== null ? 'pointer' : 'default',
                 border: '1px solid #ccc',
                 borderRadius: 1,
                 px: 1,
                 py: 0.5,
                 minWidth: 50,
-                textAlign: 'center'
+                textAlign: 'center',
+                opacity: task.parent_id !== null ? 1 : 0.5,
               }}
-              onClick={toggleCheck}
+              onClick={task.parent_id !== null ? toggleCheck : undefined}
             >
               {localCounter} / {task.objective}
             </Box>
-          ) : (
+          ) : task.parent_id !== null ? (
             <Checkbox checked={checked} onChange={toggleCheck} />
+          ) : (
+            // Root task - show static indicator instead of checkbox
+            <Checkbox checked={checked} disabled />
           )}
           
           {isEditing ? (
