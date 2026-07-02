@@ -68,7 +68,7 @@ export default function App() {
   }, [showSplash]);
 
   return (
-    <Router basename={import.meta.env.VITE_SOCKET_PATH}>
+    <Router basename={import.meta.env.VITE_BASE_URL}>
       <Routes>
         <Route
           path="/"
