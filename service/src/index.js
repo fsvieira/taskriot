@@ -21,7 +21,9 @@ const io = new Server(server, {
     origin: "*", // Adjust for production
   }
 });
+
 const PORT = process.env.PORT || 3001;
+const HOST = process.env.HOST || "127.0.0.1";
 
 app.use(cors());
 app.use(express.json());
@@ -41,8 +43,8 @@ app.use("/api/project_sessions", projectSessionsRoutes);
   try {
     await db.migrate.latest();
     console.log('Migrations applied');
-    server.listen(PORT, () => {
-      console.log(`Server running at http://localhost:${PORT}`);
+    server.listen(PORT, HOST, () => {
+      console.log(`Server running at http://${HOST}:${PORT}`);
     });
   } catch (err) {
     console.error('Failed to run migrations', err);
