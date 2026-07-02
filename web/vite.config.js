@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    base: env.BASE || "/",
+    base: env.VITE_BASE_URL || "/",
     server: {
       port: Number(env.PORT) || 3000,
       strictPort: true,
