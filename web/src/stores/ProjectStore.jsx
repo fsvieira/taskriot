@@ -32,7 +32,7 @@ class ProjectStore {
   }
 
   playNotificationSound() {
-    const audio = new Audio('/galo.wav');
+    const audio = new Audio(`${import.meta.env.BASE_URL}galo.wav`);
     audio.play();
   }
 

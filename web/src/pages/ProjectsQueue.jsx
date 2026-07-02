@@ -53,7 +53,7 @@ const ProjectsQueue = observer(() => {
       projectStore.fetchQueue(projectStore.currentQueueName, true);
     });
 
-    const socket = io(import.meta.env.VITE_SOCKET_PATH);
+    const socket = io({path: import.meta.env.VITE_SOCKET_PATH});
     socket.on('stats-update', () => {
       // Only refresh projects on stats updates to avoid unnecessary queue resets
       projectStore.fetchProjects();
