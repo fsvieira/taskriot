@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './MotivationScreen.css';
 
+
 const MotivationScreen = ({ onClose }) => {
   const [pressed, setPressed] = useState(false);
 
@@ -18,7 +19,7 @@ const MotivationScreen = ({ onClose }) => {
         className={`motivation-button ${pressed ? 'pressed' : ''}`}
         onClick={handleClick}
       >
-        <img src="/start-clean.png" alt="Start Clean" />
+        <img src={`${import.meta.env.BASE_URL}start-clean.png`} alt="Start Clean" />
       </button>
     </div>
   );
