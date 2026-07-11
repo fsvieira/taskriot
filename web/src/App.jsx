@@ -1,6 +1,5 @@
 import './App.css';
 import React, { useEffect, useState } from 'react';
-import { listen } from '@tauri-apps/api/event';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { reaction } from 'mobx';
 import ProjectList from './pages/ProjectList';
@@ -49,21 +48,9 @@ export default function App() {
     checkMotivation();
     const interval = setInterval(checkMotivation, 5000); // Check every 5 seconds
 
-    let unlisten;
-    try {
-      unlisten = listen('server-log', (event) => {
-        console.log('Server Log:', event.payload);
-      });
-    } catch (error) {
-      console.warn('Tauri listen not available:', error);
-    }
-
     // Cleanup
     return () => {
       clearInterval(interval);
-      if (unlisten) {
-        unlisten.then(f => f());
-      }
     };
   }, [showSplash]);
 

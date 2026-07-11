@@ -6,8 +6,6 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/index.js",
     "dev": "bun run src/index.js",
-    "build": "bun build src/index.js --compile --outfile ../web/server-bin",
-    "build:desktop": "bun build src/index.js --compile --outfile ../web/server-bin --external pg --external better-sqlite3 --external mysql --external mysql2 --external oracledb --external tedious --external pg-query-stream --external cockroachdb --external mssql --external sqlite3",
     "knex": "knex"
   },
   "devDependencies": {
