@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { reaction } from 'mobx';
 import ProjectList from './pages/ProjectList';
 import ProjectsQueue from './pages/ProjectsQueue';
+import Planner from './pages/Planner';
 import ProjectStats from './pages/ProjectStats';
 import Account from './pages/Account';
 import MainLayout from './layouts/MainLayout';
@@ -70,6 +71,15 @@ export default function App() {
           element={
             <MainLayout>
               <ProjectsQueue />
+            </MainLayout>
+          }
+        />
+
+        <Route
+          path="/planner"
+          element={
+            <MainLayout>
+              <Planner />
             </MainLayout>
           }
         />

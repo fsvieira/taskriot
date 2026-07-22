@@ -211,9 +211,17 @@
     },
     "planner": {
       "title": "Planeador",
-      "comingSoon": "Funcionalidade de planeamento em breve...",
-      "visionPrompt": "Transporta-te para daqui a uma década: este projeto faz parte do teu dia a dia. Como é interagir com ele e qual é a sensação de o ver concretizado exatamente como sonhaste? Dica: Esquece as limitações atuais; foca-te na experiência ideal.",
-      "allProjectsHaveVision": "Todos os projetos já têm uma tarefa VISION definida!"
+      "today": "Hoje",
+      "tomorrow": "Amanhã",
+      "yesterday": "Ontem",
+      "active": "Ativa",
+      "recent": "Terminada",
+      "upcoming": "Futura",
+      "allDay": "Todo o dia",
+      "complete": "Concluir",
+      "completed": "Concluída",
+      "nextTask": "Próxima",
+      "noScheduledTasks": "Nenhuma tarefa calendarizada para este dia."
     },
     "stats": {
       "title": "Estatísticas",

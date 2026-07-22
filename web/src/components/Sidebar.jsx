@@ -26,6 +26,7 @@ import {
   AccountCircle,
   PlayArrow,
   Pause,
+  CalendarMonth,
 } from '@mui/icons-material';
 import { Link, useLocation } from 'react-router-dom';
 import LanguageSelector from './LanguageSelector';
@@ -67,6 +68,7 @@ const Sidebar = observer(() => {
   const menuItems = [
     { text: t('navigation.projects'), icon: <Dashboard />, path: '/' },
     { text: t('navigation.queue'), icon: <Assignment />, path: '/queue' },
+    { text: t('navigation.planner'), icon: <CalendarMonth />, path: '/planner' },
     { text: t('navigation.stats'), icon: <BarChart />, path: '/stats' },
     { text: 'Archive', icon: <Archive />, path: '/archive' }, // TODO: implement archive route later
   ];

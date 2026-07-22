@@ -577,6 +577,46 @@ class ProjectStore {
     }
   }
 
+  // === Planner Methods ===
+
+  async fetchPlanner(date) {
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL;
+      const res = await fetch(`${baseUrl}/api/planner?date=${date}`);
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      console.error('Erro ao buscar planner:', err);
+      return { date, entries: [] };
+    }
+  }
+
+  async completePlannerTask(taskId) {
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL;
+      await fetch(`${baseUrl}/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: true }),
+      });
+    } catch (err) {
+      console.error('Erro ao completar tarefa do planner:', err);
+    }
+  }
+
+  async incrementPlannerHabit(taskId) {
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL;
+      await fetch(`${baseUrl}/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ increment_counter: true }),
+      });
+    } catch (err) {
+      console.error('Erro ao incrementar hábito do planner:', err);
+    }
+  }
+
   async fetchProjectsWithoutVision() {
     try {
       const baseUrl = import.meta.env.VITE_API_URL;
