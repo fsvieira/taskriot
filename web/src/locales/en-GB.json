@@ -221,6 +221,7 @@
       "complete": "Complete",
       "completed": "Completed",
       "nextTask": "Next",
+      "week": "Week",
       "noScheduledTasks": "No scheduled tasks for this day."
     },
     "stats": {

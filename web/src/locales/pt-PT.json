@@ -221,6 +221,7 @@
       "complete": "Concluir",
       "completed": "Concluída",
       "nextTask": "Próxima",
+      "week": "Semana",
       "noScheduledTasks": "Nenhuma tarefa calendarizada para este dia."
     },
     "stats": {

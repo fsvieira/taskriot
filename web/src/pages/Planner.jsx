@@ -12,80 +12,131 @@ import {
   ChevronLeft,
   ChevronRight,
   Today,
+  ViewWeek,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
+import isoWeek from 'dayjs/plugin/isoWeek.js';
 import ScheduleCard from '../components/ScheduleCard';
+
+dayjs.extend(isoWeek);
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
 const Planner = () => {
   const { t } = useTranslation();
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const [weekMode, setWeekMode] = useState(false);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchPlanner = useCallback(async (date) => {
-    setLoading(true);
     try {
       const res = await fetch(`${apiUrl}/api/planner?date=${date}`);
       const data = await res.json();
-      setEntries(data.entries || []);
+      return data.entries || [];
     } catch (err) {
       console.error('Erro ao buscar planner:', err);
-      setEntries([]);
-    } finally {
-      setLoading(false);
+      return [];
     }
   }, []);
 
-  useEffect(() => {
-    fetchPlanner(selectedDate);
-  }, [selectedDate, fetchPlanner]);
+  const fetchPlannerForDate = useCallback(async (date) => {
+    setLoading(true);
+    const result = await fetchPlanner(date);
+    setEntries(result);
+    setLoading(false);
+  }, [fetchPlanner]);
 
-  // Auto-refresh every 30 seconds to update statuses
+  const fetchPlannerForWeek = useCallback(async (startDate) => {
+    setLoading(true);
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const date = dayjs(startDate).add(i, 'day').format('YYYY-MM-DD');
+      const dayEntries = await fetchPlanner(date);
+      if (dayEntries.length > 0) {
+        days.push({ date, entries: dayEntries });
+      }
+    }
+    setEntries(days);
+    setLoading(false);
+  }, [fetchPlanner]);
+
+  useEffect(() => {
+    if (weekMode) {
+      // Get Monday of the week containing selectedDate
+      const monday = dayjs(selectedDate).isoWeekday(1).format('YYYY-MM-DD');
+      fetchPlannerForWeek(monday);
+    } else {
+      fetchPlannerForDate(selectedDate);
+    }
+  }, [selectedDate, weekMode, fetchPlannerForDate, fetchPlannerForWeek]);
+
+  // Auto-refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchPlanner(selectedDate);
+      if (weekMode) {
+        const monday = dayjs(selectedDate).isoWeekday(1).format('YYYY-MM-DD');
+        fetchPlannerForWeek(monday);
+      } else {
+        fetchPlannerForDate(selectedDate);
+      }
     }, 30000);
     return () => clearInterval(interval);
-  }, [selectedDate, fetchPlanner]);
+  }, [selectedDate, weekMode, fetchPlannerForDate, fetchPlannerForWeek]);
 
-  const goToToday = () => setSelectedDate(dayjs().format('YYYY-MM-DD'));
-  const goToPrevDay = () => setSelectedDate(dayjs(selectedDate).subtract(1, 'day').format('YYYY-MM-DD'));
-  const goToNextDay = () => setSelectedDate(dayjs(selectedDate).add(1, 'day').format('YYYY-MM-DD'));
+  const goToToday = () => {
+    setSelectedDate(dayjs().format('YYYY-MM-DD'));
+    setWeekMode(false);
+  };
+
+  const goToPrev = () => {
+    if (weekMode) {
+      setSelectedDate(dayjs(selectedDate).subtract(7, 'day').format('YYYY-MM-DD'));
+    } else {
+      setSelectedDate(dayjs(selectedDate).subtract(1, 'day').format('YYYY-MM-DD'));
+    }
+  };
+
+  const goToNext = () => {
+    if (weekMode) {
+      setSelectedDate(dayjs(selectedDate).add(7, 'day').format('YYYY-MM-DD'));
+    } else {
+      setSelectedDate(dayjs(selectedDate).add(1, 'day').format('YYYY-MM-DD'));
+    }
+  };
+
+  const toggleWeekMode = () => {
+    setWeekMode(!weekMode);
+  };
 
   const handleComplete = async (entry) => {
     try {
       if (entry.do_task && !entry.do_task.completed) {
         const taskId = entry.do_task.id;
         if (entry.do_task.is_recurring) {
-          // Increment counter for recurring
           await fetch(`${apiUrl}/api/tasks/${taskId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ increment_counter: true }),
           });
         } else {
-          // Complete non-recurring
           await fetch(`${apiUrl}/api/tasks/${taskId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ completed: true }),
           });
         }
-        // Refresh planner
-        fetchPlanner(selectedDate);
+        // Refresh
+        if (weekMode) {
+          const monday = dayjs(selectedDate).isoWeekday(1).format('YYYY-MM-DD');
+          fetchPlannerForWeek(monday);
+        } else {
+          fetchPlannerForDate(selectedDate);
+        }
       }
     } catch (err) {
       console.error('Erro ao completar tarefa:', err);
     }
-  };
-
-  const handleNextTask = async (entry) => {
-    // For now, this just refreshes - the backend will recalculate the leftmost leaf
-    // and if the current do_task was completed, it should show the next one
-    // If the do_task has no open siblings, the entry may disappear
-    fetchPlanner(selectedDate);
   };
 
   const formatDate = (dateStr) => {
@@ -101,6 +152,13 @@ const Planner = () => {
     return d.format('DD/MM/YYYY');
   };
 
+  const formatDateFull = (dateStr) => {
+    const d = dayjs(dateStr);
+    const today = dayjs();
+    if (d.isSame(today, 'day')) return t('pages.planner.today');
+    return d.format('dddd, DD/MM/YYYY');
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'active': return 'success.main';
@@ -108,6 +166,12 @@ const Planner = () => {
       case 'upcoming': return 'info.main';
       default: return 'grey.500';
     }
+  };
+
+  const getWeekRangeLabel = () => {
+    const monday = dayjs(selectedDate).isoWeekday(1);
+    const sunday = monday.add(6, 'day');
+    return `${monday.format('DD/MM')} - ${sunday.format('DD/MM/YYYY')}`;
   };
 
   return (
@@ -118,13 +182,13 @@ const Planner = () => {
 
       {/* Date Navigation */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-        <IconButton onClick={goToPrevDay} size="small">
+        <IconButton onClick={goToPrev} size="small">
           <ChevronLeft />
         </IconButton>
         <Typography variant="h6" sx={{ minWidth: 200, textAlign: 'center' }}>
-          {formatDate(selectedDate)}
+          {weekMode ? getWeekRangeLabel() : formatDate(selectedDate)}
         </Typography>
-        <IconButton onClick={goToNextDay} size="small">
+        <IconButton onClick={goToNext} size="small">
           <ChevronRight />
         </IconButton>
         <Button
@@ -135,6 +199,14 @@ const Planner = () => {
           sx={{ ml: 2 }}
         >
           {t('pages.planner.today')}
+        </Button>
+        <Button
+          variant={weekMode ? 'contained' : 'outlined'}
+          size="small"
+          startIcon={<ViewWeek />}
+          onClick={toggleWeekMode}
+        >
+          {t('pages.planner.week')}
         </Button>
       </Box>
 
@@ -158,22 +230,65 @@ const Planner = () => {
       </Box>
 
       {/* Entries List */}
-      {!loading && entries.length === 0 ? (
-        <Typography color="text.secondary" sx={{ mt: 4, textAlign: 'center' }}>
-          {t('pages.planner.noScheduledTasks')}
-        </Typography>
-      ) : (
-        <Stack spacing={2}>
-          {entries.map((entry) => (
-            <ScheduleCard
-              key={`${entry.schedule_id}-${entry.task_id}`}
-              entry={entry}
-              onComplete={() => handleComplete(entry)}
-              onNextTask={() => handleNextTask(entry)}
-              statusColor={getStatusColor(entry.status)}
-            />
-          ))}
-        </Stack>
+      {!loading && (
+        <>
+          {weekMode ? (
+            /* Week view: grouped by day */
+            Array.isArray(entries) && entries.length > 0 ? (
+              <Stack spacing={3}>
+                {entries.map((day) => (
+                  <Box key={day.date}>
+                    <Typography
+                      variant="subtitle1"
+                      sx={{
+                        fontWeight: 'bold',
+                        color: 'text.secondary',
+                        mb: 1,
+                        pb: 0.5,
+                        borderBottom: '2px solid',
+                        borderColor: 'divider',
+                      }}
+                    >
+                      {formatDateFull(day.date)}
+                    </Typography>
+                    <Stack spacing={2}>
+                      {day.entries.map((entry) => (
+                        <ScheduleCard
+                          key={`${entry.schedule_id}-${entry.task_id}`}
+                          entry={entry}
+                          onComplete={() => handleComplete(entry)}
+                          statusColor={getStatusColor(entry.status)}
+                        />
+                      ))}
+                    </Stack>
+                  </Box>
+                ))}
+              </Stack>
+            ) : (
+              <Typography color="text.secondary" sx={{ mt: 4, textAlign: 'center' }}>
+                {t('pages.planner.noScheduledTasks')}
+              </Typography>
+            )
+          ) : (
+            /* Day view: flat list */
+            entries.length === 0 ? (
+              <Typography color="text.secondary" sx={{ mt: 4, textAlign: 'center' }}>
+                {t('pages.planner.noScheduledTasks')}
+              </Typography>
+            ) : (
+              <Stack spacing={2}>
+                {entries.map((entry) => (
+                  <ScheduleCard
+                    key={`${entry.schedule_id}-${entry.task_id}`}
+                    entry={entry}
+                    onComplete={() => handleComplete(entry)}
+                    statusColor={getStatusColor(entry.status)}
+                  />
+                ))}
+              </Stack>
+            )
+          )}
+        </>
       )}
     </Box>
   );
