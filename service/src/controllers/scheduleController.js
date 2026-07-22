@@ -278,6 +278,19 @@ export const getPlanner = async (req, res) => {
         ? parentChain.slice(0, -1).map(t => t.title).join(' → ')
         : '';
 
+      const closedSiblings = allProjectTasks
+        .filter(t => {
+          const updated = dayjs(t.updated_at);
+          return t.completed && t.id !== targetTaskId && updated.isAfter(dayjs().subtract(8, 'hour'));
+        })
+        .sort((a, b) => dayjs(b.updated_at).unix() - dayjs(a.updated_at).unix())
+        .slice(0, 3)
+        .map(t => ({
+          id: t.id,
+          title: t.title,
+          is_recurring: t.is_recurring,
+        }));
+
       entries.push({
         schedule_id: sched.id,
         task_id: targetTaskId,
@@ -300,7 +313,8 @@ export const getPlanner = async (req, res) => {
           objective: targetTask.objective
         } : null,
         parent_chain: parentChain,
-        path: displayPath
+        path: displayPath,
+        recently_closed_siblings: closedSiblings
       });
     }
 

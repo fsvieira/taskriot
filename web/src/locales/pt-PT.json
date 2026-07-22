@@ -222,7 +222,8 @@
       "completed": "Concluída",
       "nextTask": "Próxima",
       "week": "Semana",
-      "noScheduledTasks": "Nenhuma tarefa calendarizada para este dia."
+      "noScheduledTasks": "Nenhuma tarefa calendarizada para este dia.",
+      "recentlyClosed": "Concluídas:"
     },
     "stats": {
       "title": "Estatísticas",

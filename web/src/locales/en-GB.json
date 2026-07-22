@@ -222,7 +222,8 @@
       "completed": "Completed",
       "nextTask": "Next",
       "week": "Week",
-      "noScheduledTasks": "No scheduled tasks for this day."
+      "noScheduledTasks": "No scheduled tasks for this day.",
+      "recentlyClosed": "Recently Closed:"
     },
     "stats": {
       "title": "Statistics",

@@ -134,6 +134,32 @@ const ScheduleCard = ({ entry, onComplete, statusColor }) => {
           {taskTitle}
         </Typography>
 
+        {/* Recently closed siblings */}
+        {entry.recently_closed_siblings && entry.recently_closed_siblings.length > 0 && (
+          <Box sx={{ mb: checked ? 1 : 0.5 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {t('pages.planner.recentlyClosed') || 'Concluídas:'}
+            </Typography>
+            {entry.recently_closed_siblings.map(sibling => (
+              <Typography
+                key={sibling.id}
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                  textDecoration: 'line-through',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  fontSize: '0.85rem',
+                  lineHeight: 1.2,
+                }}
+              >
+                {sibling.title}
+              </Typography>
+            ))}
+          </Box>
+        )}
+
         {/* Actions */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
           {isRecurring ? (
