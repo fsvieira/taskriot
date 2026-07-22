@@ -157,31 +157,39 @@ const findActiveLeafOrCompletionLeaf = (tasks, parentId) => {
 
   if (children.length === 0) return null;
 
-  const firstChild = children[0];
+  for (const child of children) {
+    const isDone = child.is_recurring ? (child.current_counter || 0) >= child.objective : child.completed;
 
-  if (firstChild.is_recurring) {
-    const grandchildren = tasks.filter(t => t.parent_id === firstChild.id);
-    const hasOpen = grandchildren.some(g => {
-      if (g.is_recurring)       return g.current_counter < g.objective;
-      return !g.completed;
-    });
+    if (isDone) {
+      continue;
+    }
+
+    if (child.is_recurring) {
+      const grandchildren = tasks.filter(t => t.parent_id === child.id);
+      const hasOpen = grandchildren.some(g => {
+        if (g.is_recurring) return g.current_counter < g.objective;
+        return !g.completed;
+      });
+      if (hasOpen) {
+        const leaf = findActiveLeafOrCompletionLeaf(tasks, child.id);
+        if (leaf) return leaf;
+      }
+      return child;
+    }
+
+    const hasSubtasks = tasks.some(t => t.parent_id === child.id);
+    if (!hasSubtasks) return child;
+
+    const hasOpen = tasks.some(t => t.parent_id === child.id && !t.completed);
     if (hasOpen) {
-      const leaf = findActiveLeafOrCompletionLeaf(tasks, firstChild.id);
+      const leaf = findActiveLeafOrCompletionLeaf(tasks, child.id);
       if (leaf) return leaf;
     }
-    return firstChild;
+
+    return child;
   }
 
-  const hasSubtasks = tasks.some(t => t.parent_id === firstChild.id);
-  if (!hasSubtasks) return firstChild;
-
-  const hasOpen = tasks.some(t => t.parent_id === firstChild.id && !t.completed);
-  if (hasOpen) {
-    const leaf = findActiveLeafOrCompletionLeaf(tasks, firstChild.id);
-    if (leaf) return leaf;
-  }
-
-  return firstChild;
+  return null;
 };
 
 // === Helper: build path from root to a task ===
