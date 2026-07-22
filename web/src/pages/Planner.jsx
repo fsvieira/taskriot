@@ -48,6 +48,7 @@ const Planner = () => {
   }, [fetchPlanner]);
 
   const fetchPlannerForWeek = useCallback(async (startDate) => {
+    setEntries([]);
     setLoading(true);
     const days = [];
     for (let i = 0; i < 7; i++) {
@@ -109,30 +110,30 @@ const Planner = () => {
     setWeekMode(!weekMode);
   };
 
-  const handleComplete = async (entry) => {
+  const handleComplete = async (entry, newDoneState) => {
     try {
-      if (entry.do_task && !entry.do_task.completed) {
-        const taskId = entry.do_task.id;
-        if (entry.do_task.is_recurring) {
-          await fetch(`${apiUrl}/api/tasks/${taskId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ increment_counter: true }),
-          });
-        } else {
-          await fetch(`${apiUrl}/api/tasks/${taskId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ completed: true }),
-          });
-        }
-        // Refresh
-        if (weekMode) {
-          const monday = dayjs(selectedDate).isoWeekday(1).format('YYYY-MM-DD');
-          fetchPlannerForWeek(monday);
-        } else {
-          fetchPlannerForDate(selectedDate);
-        }
+      const taskId = entry.do_task ? entry.do_task.id : entry.task_id;
+      const isRecurring = entry.do_task ? entry.do_task.is_recurring : entry.is_recurring;
+
+      if (isRecurring && newDoneState) {
+        await fetch(`${apiUrl}/api/tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ increment_counter: true }),
+        });
+      } else {
+        await fetch(`${apiUrl}/api/tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed: newDoneState }),
+        });
+      }
+      // Refresh
+      if (weekMode) {
+        const monday = dayjs(selectedDate).isoWeekday(1).format('YYYY-MM-DD');
+        fetchPlannerForWeek(monday);
+      } else {
+        fetchPlannerForDate(selectedDate);
       }
     } catch (err) {
       console.error('Erro ao completar tarefa:', err);
@@ -233,8 +234,7 @@ const Planner = () => {
       {!loading && (
         <>
           {weekMode ? (
-            /* Week view: grouped by day */
-            Array.isArray(entries) && entries.length > 0 ? (
+            Array.isArray(entries) && entries.length > 0 && 'entries' in entries[0] ? (
               <Stack spacing={3}>
                 {entries.map((day) => (
                   <Box key={day.date}>
@@ -256,7 +256,7 @@ const Planner = () => {
                         <ScheduleCard
                           key={`${entry.schedule_id}-${entry.task_id}`}
                           entry={entry}
-                          onComplete={() => handleComplete(entry)}
+                          onComplete={(done) => handleComplete(entry, done)}
                           statusColor={getStatusColor(entry.status)}
                         />
                       ))}
@@ -270,7 +270,6 @@ const Planner = () => {
               </Typography>
             )
           ) : (
-            /* Day view: flat list */
             entries.length === 0 ? (
               <Typography color="text.secondary" sx={{ mt: 4, textAlign: 'center' }}>
                 {t('pages.planner.noScheduledTasks')}
@@ -281,7 +280,7 @@ const Planner = () => {
                   <ScheduleCard
                     key={`${entry.schedule_id}-${entry.task_id}`}
                     entry={entry}
-                    onComplete={() => handleComplete(entry)}
+                    onComplete={(done) => handleComplete(entry, done)}
                     statusColor={getStatusColor(entry.status)}
                   />
                 ))}

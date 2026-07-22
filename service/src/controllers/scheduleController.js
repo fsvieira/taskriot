@@ -150,50 +150,38 @@ const resolveSchedulesForDate = (schedules, dateStr) => {
   });
 };
 
-// === Helper: find leftmost open leaf task under a given parent ===
+// === Helper: find leftmost open (recurring or uncompleted) leaf task, or leftmost child if none are open ===
 
-const findLeftmostOpenLeafTask = (tasks, parentId) => {
+const findActiveLeafOrCompletionLeaf = (tasks, parentId) => {
   const children = tasks.filter(t => t.parent_id === parentId).sort((a, b) => a.position - b.position);
-  
-  for (const task of children) {
-    if (task.is_recurring) {
-      // Recurring tasks are always "open" for scheduling - continue down
-      const grandchildren = tasks.filter(t => t.parent_id === task.id);
-      const hasOpen = grandchildren.some(g => {
-        if (g.is_recurring) return g.current_counter < g.objective || true; // always open
-        return !g.completed;
-      });
-      if (hasOpen) {
-        const leaf = findLeftmostOpenLeafTask(tasks, task.id);
-        if (leaf) return leaf;
-      }
-      // If no open subtasks, this recurring task itself is the leaf (but we show the recurring task)
-      if (task.current_counter < task.objective || true) {
-        return task;
-      }
-      continue;
-    }
-    
-    if (task.completed) continue;
-    
-    // Check if task has subtasks
-    const hasSubtasks = tasks.some(t => t.parent_id === task.id);
-    if (!hasSubtasks) {
-      return task; // leaf task
-    }
-    
-    // Has subtasks - check if any are open
-    const hasOpenSubtasks = tasks.some(t => t.parent_id === task.id && !t.completed);
-    if (hasOpenSubtasks) {
-      const leaf = findLeftmostOpenLeafTask(tasks, task.id);
+
+  if (children.length === 0) return null;
+
+  const firstChild = children[0];
+
+  if (firstChild.is_recurring) {
+    const grandchildren = tasks.filter(t => t.parent_id === firstChild.id);
+    const hasOpen = grandchildren.some(g => {
+      if (g.is_recurring)       return g.current_counter < g.objective;
+      return !g.completed;
+    });
+    if (hasOpen) {
+      const leaf = findActiveLeafOrCompletionLeaf(tasks, firstChild.id);
       if (leaf) return leaf;
     }
-    
-    // All subtasks completed, this task itself is the leaf
-    return task;
+    return firstChild;
   }
-  
-  return null;
+
+  const hasSubtasks = tasks.some(t => t.parent_id === firstChild.id);
+  if (!hasSubtasks) return firstChild;
+
+  const hasOpen = tasks.some(t => t.parent_id === firstChild.id && !t.completed);
+  if (hasOpen) {
+    const leaf = findActiveLeafOrCompletionLeaf(tasks, firstChild.id);
+    if (leaf) return leaf;
+  }
+
+  return firstChild;
 };
 
 // === Helper: build path from root to a task ===
@@ -255,30 +243,17 @@ export const getPlanner = async (req, res) => {
         if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
           status = 'active';
         } else if (currentMinutes > endMinutes) {
-          // Check if within last 30 minutes tolerance
           const diff = currentMinutes - endMinutes;
           if (diff <= 30) {
             status = 'recent';
           } else {
-            continue; // past 30 min tolerance, skip
+            continue;
           }
         } else if (currentMinutes < startMinutes) {
           status = 'upcoming';
-        } else {
-          continue;
         }
       } else {
-        // No specific time - if task is not completed and date matches, show as upcoming/active
-        if (!sched.completed || sched.is_recurring) {
-          status = currentTime >= '00:00' ? 'active' : 'upcoming';
-        } else {
-          continue;
-        }
-      }
-
-      // For non-recurring completed tasks, skip
-      if (!sched.is_recurring && sched.completed) {
-        continue;
+        status = currentTime >= '00:00' ? 'active' : 'upcoming';
       }
 
       // Get the scheduled task's full project tasks for tree context
@@ -286,38 +261,35 @@ export const getPlanner = async (req, res) => {
         .where({ project_id: sched.project_id })
         .orderBy('position', 'asc');
 
-      // Find the leftmost open leaf under the scheduled task
-      const doTask = findLeftmostOpenLeafTask(allProjectTasks, sched.task_id);
-
-      // Build path from root to the do_task (or to the scheduled task if no do_task)
-      const targetTaskId = doTask ? doTask.id : sched.task_id;
+      const targetTask = findActiveLeafOrCompletionLeaf(allProjectTasks, sched.task_id);
+      const targetTaskId = targetTask ? targetTask.id : sched.task_id;
       const parentChain = buildTaskPath(allProjectTasks, targetTaskId);
 
-      // Build display path (excluding project name, excluding the final task title)
+      const targetTaskInfo = allProjectTasks.find(t => t.id === targetTaskId) || sched;
       const displayPath = parentChain.length > 1
         ? parentChain.slice(0, -1).map(t => t.title).join(' → ')
         : '';
 
       entries.push({
         schedule_id: sched.id,
-        task_id: sched.task_id,
+        task_id: targetTaskId,
         start_time: sched.start_time || '00:00',
         end_time: sched.end_time || '23:59',
         status,
         project_id: sched.project_id,
         project_name: sched.project_name,
-        task_title: sched.task_title,
-        is_recurring: sched.is_recurring,
-        current_counter: sched.current_counter,
-        objective: sched.objective,
-        completed: sched.completed,
-        do_task: doTask ? {
-          id: doTask.id,
-          title: doTask.title,
-          completed: doTask.completed,
-          is_recurring: doTask.is_recurring,
-          current_counter: doTask.current_counter,
-          objective: doTask.objective
+        task_title: targetTask ? targetTask.title : sched.task_title,
+        is_recurring: targetTaskInfo.is_recurring,
+        current_counter: targetTaskInfo.current_counter,
+        objective: targetTaskInfo.objective,
+        completed: targetTaskInfo.completed,
+        do_task: targetTask ? {
+          id: targetTask.id,
+          title: targetTask.title,
+          completed: targetTask.completed,
+          is_recurring: targetTask.is_recurring,
+          current_counter: targetTask.current_counter,
+          objective: targetTask.objective
         } : null,
         parent_chain: parentChain,
         path: displayPath

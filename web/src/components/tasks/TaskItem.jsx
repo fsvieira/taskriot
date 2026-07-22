@@ -58,6 +58,10 @@ const parseTextWithLinks = (text) => {
 export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, onToggleDone, onEditTask }) {
   const [checked, setChecked] = useState(Boolean(task.completed));
   const [open, setOpen] = useState(level === 0);
+
+  useEffect(() => {
+    setChecked(Boolean(task.completed));
+  }, [task.completed]);
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [subtaskData, setSubtaskData] = useState({
     title: '',
@@ -67,6 +71,11 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
   });
 
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    setChecked(Boolean(task.completed));
+  }, [task.completed]);
+
   const [editData, setEditData] = useState({
     title: task.title,
     is_recurring: task.is_recurring || false,

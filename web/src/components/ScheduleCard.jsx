@@ -23,9 +23,7 @@ const ScheduleCard = ({ entry, onComplete, statusColor }) => {
   const objective = entry.do_task?.objective ?? entry.objective ?? 1;
 
   const handleToggleCheck = () => {
-    if (!checked) {
-      onComplete();
-    }
+    onComplete(!checked);
   };
 
   const formatTime = (time) => {
@@ -140,18 +138,8 @@ const ScheduleCard = ({ entry, onComplete, statusColor }) => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
           {isRecurring ? (
             <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                border: '1px solid #ccc',
-                borderRadius: 1,
-                px: 1.5,
-                py: 0.5,
-                cursor: checked ? 'default' : 'pointer',
-                opacity: checked ? 0.6 : 1,
-              }}
-              onClick={!checked ? handleToggleCheck : undefined}
+              sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+              onClick={handleToggleCheck}
             >
               <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                 {currentCounter} / {objective}
