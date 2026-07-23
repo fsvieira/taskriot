@@ -18,10 +18,9 @@ import {
   MenuItem,
   InputLabel,
   FormControl,
-  Typography,
 } from '@mui/material';
-import { ExpandLess, ExpandMore, Add, Delete, Edit, DragIndicator, Schedule } from '@mui/icons-material';
-import ScheduleDialog from './ScheduleDialog';
+import { ExpandLess, ExpandMore, Add, Delete, Edit, DragIndicator } from '@mui/icons-material';
+import EditTaskDialog from './EditTaskDialog';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -62,6 +61,7 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
   useEffect(() => {
     setChecked(Boolean(task.completed));
   }, [task.completed]);
+
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [subtaskData, setSubtaskData] = useState({
     title: '',
@@ -70,23 +70,9 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
     objective: 1
   });
 
-  const [isEditing, setIsEditing] = useState(false);
-
-  useEffect(() => {
-    setChecked(Boolean(task.completed));
-  }, [task.completed]);
-
-  const [editData, setEditData] = useState({
-    title: task.title,
-    is_recurring: task.is_recurring || false,
-    recurrence_type: task.recurrence_type || 'daily',
-    objective: task.objective || 1
-  });
-
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [localCounter, setLocalCounter] = useState(task.current_counter || 0);
-  const [schedules, setSchedules] = useState([]);
-  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const isRecurring = task.is_recurring;
 
@@ -100,10 +86,8 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
   const { setNodeRef: setInsideRef, isOver: isOverInside } = useDroppable({ id: `drop-inside-${task.id}` });
   const { setNodeRef: setAfterRef, isOver: isOverAfter } = useDroppable({ id: `drop-after-${task.id}` });
 
-
   const toggleCheck = async () => {
     if (isRecurring) {
-      // For recurring, increment counter
       await incrementCounter();
     } else {
       if (await onToggleDone(task.id, !checked)) {
@@ -128,19 +112,6 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
       console.error('Erro ao incrementar contador:', err);
     }
   };
-
-   const handleSaveEdit = async () => {
-     if (editData.title.trim()) {
-       const updates = { title: editData.title.trim() };
-       if (editData.is_recurring !== task.is_recurring) updates.is_recurring = editData.is_recurring;
-       if (editData.recurrence_type !== task.recurrence_type) updates.recurrence_type = editData.recurrence_type;
-       if (editData.objective !== task.objective) updates.objective = editData.objective;
-       if (await onEditTask(task.id, updates)) {
-         setIsEditing(false);
-       }
-     }
-     setIsEditing(false);
-   };
 
   const handleAddSubtask = () => {
     if (!subtaskData.title.trim()) return;
@@ -168,38 +139,12 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
     setDeleteDialogOpen(false);
   };
 
-  // Fetch schedules for this task
-  useEffect(() => {
-    const fetchSchedules = async () => {
-      try {
-        const res = await fetch(`${apiUrl}/api/tasks/${task.id}/schedules`);
-        if (res.ok) {
-          const data = await res.json();
-          setSchedules(data);
-        }
-      } catch (err) {
-        console.error('Erro ao buscar schedules:', err);
-      }
-    };
-    if (isEditing) {
-      fetchSchedules();
+  const handleEditSavedOrDeleted = () => {
+    // Refresh the tree after edit or delete (modal already did the API calls)
+    if (onEditTask) {
+      // Trigger a refetch from parent by calling with empty updates
+      onEditTask(task.id, {});
     }
-  }, [task.id, isEditing]);
-
-  const handleScheduleChanged = () => {
-    // Refresh schedules after dialog edits
-    const fetchSchedules = async () => {
-      try {
-        const res = await fetch(`${apiUrl}/api/tasks/${task.id}/schedules`);
-        if (res.ok) {
-          const data = await res.json();
-          setSchedules(data);
-        }
-      } catch (err) {
-        console.error('Erro ao buscar schedules:', err);
-      }
-    };
-    fetchSchedules();
   };
 
   return (
@@ -219,11 +164,10 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
         divider
         sx={{ pl: 0, pr: 0 }}
         secondaryAction={
-          !isEditing &&
           <>
             <IconButton
               edge="end"
-              onClick={() => setIsEditing(!isEditing)}
+              onClick={() => setEditDialogOpen(true)}
               size="small"
               title="Editar tarefa"
               sx={{ mr: 1 }}
@@ -268,7 +212,7 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
             opacity: isDragging ? 0.5 : 1,
           }}
           sx={{
-            bgcolor: getTaskColor(task.percent_closed), // cor baseada na percentagem concluída
+            bgcolor: getTaskColor(task.percent_closed),
             borderRadius: 2,
             width: '100%',
             display: 'flex',
@@ -304,103 +248,19 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
           ) : task.parent_id !== null ? (
             <Checkbox checked={checked} onChange={toggleCheck} />
           ) : (
-            // Root task - show static indicator instead of checkbox
             <Checkbox checked={checked} disabled />
           )}
-          
-          {isEditing ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 1 }}>
-              <TextField
-                value={editData.title}
-                onChange={(e) => setEditData({ ...editData, title: e.target.value })}
-                size="small"
-                autoFocus
-                fullWidth
-                multiline
-                minRows={1}
-                maxRows={4}
-                label="Título"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={editData.is_recurring}
-                    onChange={(e) => setEditData({ ...editData, is_recurring: e.target.checked })}
-                  />
-                }
-                label="Recorrente"
-              />
-              {editData.is_recurring && (
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <FormControl size="small" sx={{ minWidth: 120 }}>
-                    <InputLabel>Tipo</InputLabel>
-                    <Select
-                      value={editData.recurrence_type}
-                      onChange={(e) => setEditData({ ...editData, recurrence_type: e.target.value })}
-                      label="Tipo"
-                    >
-                      <MenuItem value="daily">Diário</MenuItem>
-                      <MenuItem value="weekly">Semanal</MenuItem>
-                      <MenuItem value="monthly">Mensal</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <TextField
-                    type="number"
-                    value={editData.objective}
-                    onChange={(e) => setEditData({ ...editData, objective: parseInt(e.target.value) || 1 })}
-                    size="small"
-                    label="Objectivo"
-                    sx={{ minWidth: 100 }}
-                  />
-                </Box>
-              )}
-              {/* Schedule Section */}
-              <Box sx={{ mt: 1, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                <Typography variant="caption" sx={{ fontWeight: 'bold', mb: 0.5, display: 'block' }}>
-                  Calendarização
-                </Typography>
-                
-                {/* Schedules count badge */}
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {schedules.length} horário{schedules.length !== 1 ? 's' : ''} definido{schedules.length !== 1 ? 's' : ''}
-                </Typography>
 
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<Schedule />}
-                  onClick={() => setScheduleDialogOpen(true)}
-                >
-                  {schedules.length > 0 ? 'Editar Horários' : 'Adicionar Horários'}
-                </Button>
-              </Box>
-
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button size="small" variant="contained" onClick={handleSaveEdit}>
-                  Salvar
-                </Button>
-                <Button size="small" variant="outlined" onClick={() => setIsEditing(false)}>
-                  Cancelar
-                </Button>
-              </Box>
-            </Box>
-          ) : (
-            <ListItemText
-              primary={parseTextWithLinks(task.title)}
-              sx={{
-                textDecoration: (checked || (isRecurring && localCounter >= task.objective)) ? 'line-through' : 'none',
-                whiteSpace: 'pre-wrap', // suporta multi-linha
-                wordBreak: 'break-word',
-                flex: 1,
-                pr: '7.5em', // deixa espaço para as ações (ajusta conforme nº de botões)
-              }}
-            />
-          )
-          /*
           <ListItemText
-            primary={task.title}
-            sx={{ textDecoration: checked ? 'line-through' : 'none' }}
-          />*/}
+            primary={parseTextWithLinks(task.title)}
+            sx={{
+              textDecoration: (checked || (isRecurring && localCounter >= task.objective)) ? 'line-through' : 'none',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              flex: 1,
+              pr: '7.5em',
+            }}
+          />
         </Box>
       </ListItem>
 
@@ -527,13 +387,13 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
         </DialogActions>
       </Dialog>
 
-      {/* Schedule Dialog */}
-      <ScheduleDialog
-        open={scheduleDialogOpen}
-        onClose={() => setScheduleDialogOpen(false)}
-        taskId={task.id}
-        existingSchedules={schedules}
-        onSchedulesChanged={handleScheduleChanged}
+      {/* Edit Task Dialog - unified modal for editing task details and schedules */}
+      <EditTaskDialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        task={task}
+        onSaved={handleEditSavedOrDeleted}
+        onDeleted={handleEditSavedOrDeleted}
       />
     </>
   );
