@@ -64,9 +64,7 @@ const Planner = () => {
 
   useEffect(() => {
     if (weekMode) {
-      // Get Monday of the week containing selectedDate
-      const monday = dayjs(selectedDate).isoWeekday(1).format('YYYY-MM-DD');
-      fetchPlannerForWeek(monday);
+      fetchPlannerForWeek(selectedDate);
     } else {
       fetchPlannerForDate(selectedDate);
     }
@@ -76,8 +74,7 @@ const Planner = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       if (weekMode) {
-        const monday = dayjs(selectedDate).isoWeekday(1).format('YYYY-MM-DD');
-        fetchPlannerForWeek(monday);
+        fetchPlannerForWeek(selectedDate);
       } else {
         fetchPlannerForDate(selectedDate);
       }
@@ -108,6 +105,10 @@ const Planner = () => {
 
   const toggleWeekMode = () => {
     setWeekMode(!weekMode);
+    if (!weekMode) {
+      // When entering week mode, start from today
+      setSelectedDate(dayjs().format('YYYY-MM-DD'));
+    }
   };
 
   const handleComplete = async (entry, newDoneState) => {
@@ -130,8 +131,7 @@ const Planner = () => {
       }
       // Refresh
       if (weekMode) {
-        const monday = dayjs(selectedDate).isoWeekday(1).format('YYYY-MM-DD');
-        fetchPlannerForWeek(monday);
+        fetchPlannerForWeek(selectedDate);
       } else {
         fetchPlannerForDate(selectedDate);
       }
@@ -170,9 +170,9 @@ const Planner = () => {
   };
 
   const getWeekRangeLabel = () => {
-    const monday = dayjs(selectedDate).isoWeekday(1);
-    const sunday = monday.add(6, 'day');
-    return `${monday.format('DD/MM')} - ${sunday.format('DD/MM/YYYY')}`;
+    const start = dayjs(selectedDate);
+    const end = start.add(6, 'day');
+    return `${start.format('DD/MM')} - ${end.format('DD/MM/YYYY')}`;
   };
 
   return (

@@ -19,9 +19,9 @@ import {
   InputLabel,
   FormControl,
   Typography,
-  Chip,
 } from '@mui/material';
-import { ExpandLess, ExpandMore, Add, Delete, Edit, Check, DragIndicator, Schedule, Delete as DeleteIcon } from '@mui/icons-material';
+import { ExpandLess, ExpandMore, Add, Delete, Edit, DragIndicator, Schedule } from '@mui/icons-material';
+import ScheduleDialog from './ScheduleDialog';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -86,16 +86,7 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [localCounter, setLocalCounter] = useState(task.current_counter || 0);
   const [schedules, setSchedules] = useState([]);
-  const [showScheduleForm, setShowScheduleForm] = useState(false);
-  const [scheduleForm, setScheduleForm] = useState({
-    date: '',
-    start_time: '',
-    end_time: '',
-    is_recurring: false,
-    recurrence_type: 'weekly',
-    day_of_week: 1,
-    day_of_month: 1,
-  });
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
   const isRecurring = task.is_recurring;
 
@@ -195,97 +186,20 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
     }
   }, [task.id, isEditing]);
 
-  const handleAddSchedule = async () => {
-    try {
-      const body = {
-        date: scheduleForm.date || null,
-        start_time: scheduleForm.start_time || null,
-        end_time: scheduleForm.end_time || null,
-        is_recurring: scheduleForm.is_recurring,
-        recurrence_type: scheduleForm.is_recurring ? scheduleForm.recurrence_type : null,
-        day_of_week: scheduleForm.is_recurring && scheduleForm.recurrence_type === 'weekly' ? scheduleForm.day_of_week : null,
-        day_of_month: scheduleForm.is_recurring && scheduleForm.recurrence_type === 'monthly' ? scheduleForm.day_of_month : null,
-      };
-      const res = await fetch(`${apiUrl}/api/tasks/${task.id}/schedules`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (res.ok) {
-        const { id } = await res.json();
-        setSchedules(prev => [...prev, { id, ...body }]);
-        setShowScheduleForm(false);
-        setScheduleForm({
-          date: '',
-          start_time: '',
-          end_time: '',
-          is_recurring: false,
-          recurrence_type: 'weekly',
-          day_of_week: 1,
-          day_of_month: 1,
-        });
+  const handleScheduleChanged = () => {
+    // Refresh schedules after dialog edits
+    const fetchSchedules = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/tasks/${task.id}/schedules`);
+        if (res.ok) {
+          const data = await res.json();
+          setSchedules(data);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar schedules:', err);
       }
-    } catch (err) {
-      console.error('Erro ao adicionar schedule:', err);
-    }
-  };
-
-  const handleDeleteSchedule = async (scheduleId) => {
-    try {
-      const res = await fetch(`${apiUrl}/api/schedules/${scheduleId}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        setSchedules(prev => prev.filter(s => s.id !== scheduleId));
-      }
-    } catch (err) {
-      console.error('Erro ao apagar schedule:', err);
-    }
-  };
-
-  const handleQuickDate = (preset) => {
-    const today = new Date();
-    let date;
-    switch (preset) {
-      case 'tomorrow':
-        date = new Date(today);
-        date.setDate(date.getDate() + 1);
-        break;
-      case 'nextWeek':
-        date = new Date(today);
-        date.setDate(date.getDate() + 7);
-        break;
-      case 'nextMonth':
-        date = new Date(today);
-        date.setMonth(date.getMonth() + 1);
-        break;
-      default:
-        date = today;
-    }
-    setScheduleForm(prev => ({
-      ...prev,
-      date: date.toISOString().split('T')[0],
-    }));
-  };
-
-  const formatScheduleSummary = (sched) => {
-    if (sched.is_recurring) {
-      const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-      let recurrence = '';
-      if (sched.recurrence_type === 'daily') recurrence = 'Diário';
-      else if (sched.recurrence_type === 'weekly') recurrence = days[sched.day_of_week];
-      else if (sched.recurrence_type === 'monthly') recurrence = `Dia ${sched.day_of_month}`;
-      const time = sched.start_time && sched.end_time
-        ? `${sched.start_time.slice(0, 5)}-${sched.end_time.slice(0, 5)}`
-        : 'Todo o dia';
-      return `${recurrence} ${time}`;
-    } else {
-      const date = sched.date ? new Date(sched.date).toLocaleDateString('pt-PT') : 'Sem data';
-      const time = sched.start_time && sched.end_time
-        ? `${sched.start_time.slice(0, 5)}-${sched.end_time.slice(0, 5)}`
-        : 'Todo o dia';
-      return `${date} ${time}`;
-    }
+    };
+    fetchSchedules();
   };
 
   return (
@@ -446,128 +360,19 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
                   Calendarização
                 </Typography>
                 
-                {/* Existing schedules */}
-                {schedules.length > 0 && (
-                  <Box sx={{ mb: 1 }}>
-                    {schedules.map(sched => (
-                      <Box key={sched.id} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                        <Chip
-                          label={formatScheduleSummary(sched)}
-                          size="small"
-                          onDelete={() => handleDeleteSchedule(sched.id)}
-                          deleteIcon={<DeleteIcon fontSize="small" />}
-                        />
-                      </Box>
-                    ))}
-                  </Box>
-                )}
+                {/* Schedules count badge */}
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {schedules.length} horário{schedules.length !== 1 ? 's' : ''} definido{schedules.length !== 1 ? 's' : ''}
+                </Typography>
 
-                {showScheduleForm ? (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <TextField
-                        type="date"
-                        size="small"
-                        label="Data"
-                        value={scheduleForm.date}
-                        onChange={(e) => setScheduleForm({ ...scheduleForm, date: e.target.value })}
-                        InputLabelProps={{ shrink: true }}
-                        disabled={scheduleForm.is_recurring}
-                        sx={{ flex: 1 }}
-                      />
-                      <TextField
-                        type="time"
-                        size="small"
-                        label="Início"
-                        value={scheduleForm.start_time}
-                        onChange={(e) => setScheduleForm({ ...scheduleForm, start_time: e.target.value })}
-                        InputLabelProps={{ shrink: true }}
-                        sx={{ flex: 1 }}
-                      />
-                      <TextField
-                        type="time"
-                        size="small"
-                        label="Fim"
-                        value={scheduleForm.end_time}
-                        onChange={(e) => setScheduleForm({ ...scheduleForm, end_time: e.target.value })}
-                        InputLabelProps={{ shrink: true }}
-                        sx={{ flex: 1 }}
-                      />
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <Button size="small" variant="outlined" onClick={() => handleQuickDate('tomorrow')}>Amanhã</Button>
-                      <Button size="small" variant="outlined" onClick={() => handleQuickDate('nextWeek')}>Próx. Semana</Button>
-                      <Button size="small" variant="outlined" onClick={() => handleQuickDate('nextMonth')}>Próx. Mês</Button>
-                    </Box>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={scheduleForm.is_recurring}
-                          onChange={(e) => setScheduleForm({ ...scheduleForm, is_recurring: e.target.checked })}
-                          size="small"
-                        />
-                      }
-                      label="Repetir"
-                    />
-                    {scheduleForm.is_recurring && (
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <FormControl size="small" sx={{ minWidth: 100 }}>
-                          <InputLabel>Frequência</InputLabel>
-                          <Select
-                            value={scheduleForm.recurrence_type}
-                            onChange={(e) => setScheduleForm({ ...scheduleForm, recurrence_type: e.target.value })}
-                            label="Frequência"
-                          >
-                            <MenuItem value="daily">Diário</MenuItem>
-                            <MenuItem value="weekly">Semanal</MenuItem>
-                            <MenuItem value="monthly">Mensal</MenuItem>
-                          </Select>
-                        </FormControl>
-                        {scheduleForm.recurrence_type === 'weekly' && (
-                          <FormControl size="small" sx={{ minWidth: 100 }}>
-                            <InputLabel>Dia</InputLabel>
-                            <Select
-                              value={scheduleForm.day_of_week}
-                              onChange={(e) => setScheduleForm({ ...scheduleForm, day_of_week: e.target.value })}
-                              label="Dia"
-                            >
-                              <MenuItem value={0}>Dom</MenuItem>
-                              <MenuItem value={1}>Seg</MenuItem>
-                              <MenuItem value={2}>Ter</MenuItem>
-                              <MenuItem value={3}>Qua</MenuItem>
-                              <MenuItem value={4}>Qui</MenuItem>
-                              <MenuItem value={5}>Sex</MenuItem>
-                              <MenuItem value={6}>Sáb</MenuItem>
-                            </Select>
-                          </FormControl>
-                        )}
-                        {scheduleForm.recurrence_type === 'monthly' && (
-                          <TextField
-                            type="number"
-                            size="small"
-                            label="Dia do mês"
-                            value={scheduleForm.day_of_month}
-                            onChange={(e) => setScheduleForm({ ...scheduleForm, day_of_month: parseInt(e.target.value) || 1 })}
-                            inputProps={{ min: 1, max: 31 }}
-                            sx={{ minWidth: 100 }}
-                          />
-                        )}
-                      </Box>
-                    )}
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button size="small" variant="contained" onClick={handleAddSchedule}>Adicionar</Button>
-                      <Button size="small" variant="outlined" onClick={() => setShowScheduleForm(false)}>Cancelar</Button>
-                    </Box>
-                  </Box>
-                ) : (
-                  <Button
-                    size="small"
-                    startIcon={<Schedule />}
-                    onClick={() => setShowScheduleForm(true)}
-                  >
-                    Adicionar Horário
-                  </Button>
-                )}
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<Schedule />}
+                  onClick={() => setScheduleDialogOpen(true)}
+                >
+                  {schedules.length > 0 ? 'Editar Horários' : 'Adicionar Horários'}
+                </Button>
               </Box>
 
               <Box sx={{ display: 'flex', gap: 1 }}>
@@ -721,6 +526,15 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Schedule Dialog */}
+      <ScheduleDialog
+        open={scheduleDialogOpen}
+        onClose={() => setScheduleDialogOpen(false)}
+        taskId={task.id}
+        existingSchedules={schedules}
+        onSchedulesChanged={handleScheduleChanged}
+      />
     </>
   );
 }

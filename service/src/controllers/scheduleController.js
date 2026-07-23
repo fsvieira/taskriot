@@ -131,7 +131,7 @@ const resolveSchedulesForDate = (schedules, dateStr) => {
   const dayOfMonth = date.date();
 
   return schedules.filter(s => {
-    if (s.is_recurring) {
+    if (s.schedule_is_recurring) {
       // Recurring schedule
       if (s.recurrence_type === 'daily') {
         return true;
@@ -221,7 +221,17 @@ export const getPlanner = async (req, res) => {
     // Fetch all schedule entries and their tasks
     const schedules = await req.db('schedule_entries')
       .select(
-        'schedule_entries.*',
+        'schedule_entries.id',
+        'schedule_entries.task_id',
+        'schedule_entries.date',
+        'schedule_entries.start_time',
+        'schedule_entries.end_time',
+        'schedule_entries.is_recurring as schedule_is_recurring',
+        'schedule_entries.recurrence_type',
+        'schedule_entries.day_of_week',
+        'schedule_entries.day_of_month',
+        'schedule_entries.created_at',
+        'schedule_entries.updated_at',
         'tasks.project_id',
         'tasks.title as task_title',
         'tasks.completed',
@@ -242,26 +252,37 @@ export const getPlanner = async (req, res) => {
     const entries = [];
 
     for (const sched of resolved) {
-      // Determine status
+      // Determine status based on date first, then time
       let status;
-      if (sched.start_time && sched.end_time) {
-        const startMinutes = timeToMinutes(sched.start_time);
-        const endMinutes = timeToMinutes(sched.end_time);
-        
-        if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
-          status = 'active';
-        } else if (currentMinutes > endMinutes) {
-          const diff = currentMinutes - endMinutes;
-          if (diff <= 30) {
-            status = 'recent';
-          } else {
-            continue;
-          }
-        } else if (currentMinutes < startMinutes) {
-          status = 'upcoming';
-        }
+      const todayStr = now.format('YYYY-MM-DD');
+      
+      if (targetDate < todayStr) {
+        // Past days → recent
+        status = 'recent';
+      } else if (targetDate > todayStr) {
+        // Future days → upcoming
+        status = 'upcoming';
       } else {
-        status = currentTime >= '00:00' ? 'active' : 'upcoming';
+        // Today → use time-based logic
+        if (sched.start_time && sched.end_time) {
+          const startMinutes = timeToMinutes(sched.start_time);
+          const endMinutes = timeToMinutes(sched.end_time);
+          
+          if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
+            status = 'active';
+          } else if (currentMinutes > endMinutes) {
+            const diff = currentMinutes - endMinutes;
+            if (diff <= 30) {
+              status = 'recent';
+            } else {
+              continue;
+            }
+          } else if (currentMinutes < startMinutes) {
+            status = 'upcoming';
+          }
+        } else {
+          status = currentTime >= '00:00' ? 'active' : 'upcoming';
+        }
       }
 
       // Get the scheduled task's full project tasks for tree context
