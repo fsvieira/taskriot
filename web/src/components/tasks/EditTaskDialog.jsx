@@ -18,8 +18,9 @@ import {
   MenuItem,
   Divider,
   DialogContentText,
+  Collapse,
 } from '@mui/material';
-import { Add, Delete, Schedule, Close } from '@mui/icons-material';
+import { Add, Delete, Schedule, Close, ExpandMore, ExpandLess } from '@mui/icons-material';
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -50,6 +51,7 @@ export default function EditTaskDialog({ open, onClose, task, onSaved, onDeleted
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [initialSchedules, setInitialSchedules] = useState([]);
+  const [scheduleSectionOpen, setScheduleSectionOpen] = useState(false);
 
   // Load task data when opening
   useEffect(() => {
@@ -313,12 +315,29 @@ export default function EditTaskDialog({ open, onClose, task, onSaved, onDeleted
             </Box>
           )}
 
+          {/* === SCHEDULE SECTION - Collapsible === */}
           <Divider sx={{ my: 2 }} />
+          
+          <Box
+            onClick={() => setScheduleSectionOpen(prev => !prev)}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              py: 0.5,
+              '&:hover': { bgcolor: '#f5f5f5', borderRadius: 1 },
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+              Calendarização
+            </Typography>
+            <IconButton size="small">
+              {scheduleSectionOpen ? <ExpandLess /> : <ExpandMore />}
+            </IconButton>
+          </Box>
 
-          {/* === SCHEDULE SECTION === */}
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-            Calendarização
-          </Typography>
+          <Collapse in={scheduleSectionOpen}>
 
           {/* Existing schedules */}
           {schedules.length > 0 && (
@@ -490,6 +509,7 @@ export default function EditTaskDialog({ open, onClose, task, onSaved, onDeleted
           >
             Adicionar à lista
           </Button>
+          </Collapse>
         </DialogContent>
 
         <DialogActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
