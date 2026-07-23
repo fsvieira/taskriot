@@ -27,7 +27,8 @@ const Planner = () => {
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [weekMode, setWeekMode] = useState(false);
   const [entries, setEntries] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchPlanner = useCallback(async (date) => {
     try {
@@ -40,16 +41,28 @@ const Planner = () => {
     }
   }, []);
 
-  const fetchPlannerForDate = useCallback(async (date) => {
-    setLoading(true);
+  const fetchPlannerForDate = useCallback(async (date, isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setInitialLoading(true);
+    }
     const result = await fetchPlanner(date);
     setEntries(result);
-    setLoading(false);
+    if (isRefresh) {
+      setRefreshing(false);
+    } else {
+      setInitialLoading(false);
+    }
   }, [fetchPlanner]);
 
-  const fetchPlannerForWeek = useCallback(async (startDate) => {
-    setEntries([]);
-    setLoading(true);
+  const fetchPlannerForWeek = useCallback(async (startDate, isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setEntries([]);
+      setInitialLoading(true);
+    }
     const days = [];
     for (let i = 0; i < 7; i++) {
       const date = dayjs(startDate).add(i, 'day').format('YYYY-MM-DD');
@@ -59,14 +72,18 @@ const Planner = () => {
       }
     }
     setEntries(days);
-    setLoading(false);
+    if (isRefresh) {
+      setRefreshing(false);
+    } else {
+      setInitialLoading(false);
+    }
   }, [fetchPlanner]);
 
   useEffect(() => {
     if (weekMode) {
-      fetchPlannerForWeek(selectedDate);
+      fetchPlannerForWeek(selectedDate, false);
     } else {
-      fetchPlannerForDate(selectedDate);
+      fetchPlannerForDate(selectedDate, false);
     }
   }, [selectedDate, weekMode, fetchPlannerForDate, fetchPlannerForWeek]);
 
@@ -74,9 +91,9 @@ const Planner = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       if (weekMode) {
-        fetchPlannerForWeek(selectedDate);
+        fetchPlannerForWeek(selectedDate, true);
       } else {
-        fetchPlannerForDate(selectedDate);
+        fetchPlannerForDate(selectedDate, true);
       }
     }, 30000);
     return () => clearInterval(interval);
@@ -129,11 +146,11 @@ const Planner = () => {
           body: JSON.stringify({ completed: newDoneState }),
         });
       }
-      // Refresh
+      // Refresh (silent, without clearing entries)
       if (weekMode) {
-        fetchPlannerForWeek(selectedDate);
+        fetchPlannerForWeek(selectedDate, true);
       } else {
-        fetchPlannerForDate(selectedDate);
+        fetchPlannerForDate(selectedDate, true);
       }
     } catch (err) {
       console.error('Erro ao completar tarefa:', err);
@@ -212,7 +229,7 @@ const Planner = () => {
       </Box>
 
       {/* Loading */}
-      {loading && <LinearProgress sx={{ mb: 2 }} />}
+      {(initialLoading || refreshing) && <LinearProgress sx={{ mb: 2 }} />}
 
       {/* Status Legend */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
@@ -231,7 +248,7 @@ const Planner = () => {
       </Box>
 
       {/* Entries List */}
-      {!loading && (
+      {!initialLoading && (
         <>
           {weekMode ? (
             Array.isArray(entries) && entries.length > 0 && 'entries' in entries[0] ? (
