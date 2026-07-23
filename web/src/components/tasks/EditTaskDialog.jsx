@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -53,20 +53,30 @@ export default function EditTaskDialog({ open, onClose, task, onSaved, onDeleted
   const [initialSchedules, setInitialSchedules] = useState([]);
   const [scheduleSectionOpen, setScheduleSectionOpen] = useState(false);
 
-  // Load task data when opening
+  // Ref to track if the dialog has been initialized
+  const initializedRef = useRef(false);
+
+  // Load task data only when the dialog opens (not on task prop changes while open)
   useEffect(() => {
-    if (open && task) {
-      setTitle(task.title || '');
-      setIsRecurring(task.is_recurring || false);
-      setRecurrenceType(task.recurrence_type || 'daily');
-      setObjective(task.objective || 1);
-      setScheduleMode('date');
-      setDate(new Date().toISOString().split('T')[0]);
-      setSelectedDays([new Date().getDay()]);
-      setTimeSlots([{ ...defaultTimeSlot }]);
-      fetchSchedules();
+    if (open) {
+      // Only initialize if we haven't done so yet
+      if (!initializedRef.current) {
+        initializedRef.current = true;
+        setTitle(task?.title || '');
+        setIsRecurring(task?.is_recurring || false);
+        setRecurrenceType(task?.recurrence_type || 'daily');
+        setObjective(task?.objective || 1);
+        setScheduleMode('date');
+        setDate(new Date().toISOString().split('T')[0]);
+        setSelectedDays([new Date().getDay()]);
+        setTimeSlots([{ ...defaultTimeSlot }]);
+        fetchSchedules();
+      }
+    } else {
+      // Reset the flag when dialog closes so it re-initializes on next open
+      initializedRef.current = false;
     }
-  }, [open, task]);
+  }, [open]);
 
   const fetchSchedules = async () => {
     if (!task) return;
