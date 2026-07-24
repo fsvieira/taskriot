@@ -20,7 +20,7 @@ export default {
   development: {
     client: 'better-sqlite3',
     connection: {
-      filename: process.env.DATABASE_PATH || path.join(getAppDataDir(), 'dev.sqlite3')
+      filename: process.env.DATABASE_PATH
     },
     useNullAsDefault: true,
     migrations: {
