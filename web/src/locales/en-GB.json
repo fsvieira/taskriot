@@ -233,6 +233,7 @@
       "week": "Week",
       "noScheduledTasks": "No scheduled tasks for this day.",
       "recentlyClosed": "Recently Closed:",
+      "labelScheduled": "Label Scheduled",
       "tabSchedule": "Schedule",
       "tabLabels": "Phases",
       "tabScheduling": "Scheduling"

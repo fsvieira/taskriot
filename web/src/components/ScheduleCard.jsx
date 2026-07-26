@@ -7,6 +7,7 @@ import {
   Checkbox,
   Box,
   Divider,
+  Chip,
 } from '@mui/material';
 import {
   AccessTime,
@@ -106,6 +107,15 @@ const ScheduleCard = ({ entry, onComplete, statusColor }) => {
         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 0.5 }}>
           {entry.project_name}
         </Typography>
+
+        {/* Label indicator */}
+        {entry.label_name && (
+          <Chip
+            label={entry.label_name}
+            size="small"
+            sx={{ mb: 0.5, height: 20, fontSize: '0.75rem' }}
+          />
+        )}
 
         {/* Path */}
         {entry.path && (

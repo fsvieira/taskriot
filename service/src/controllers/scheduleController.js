@@ -339,6 +339,124 @@ export const getPlanner = async (req, res) => {
       });
     }
 
+    // Collect already-scheduled task IDs for deduplication
+    const directTaskIds = new Set(resolved.map(s => s.task_id));
+
+    // Fetch matching label schedules for the target date
+    const dayOfWeek = dayjs(targetDate).day();
+    const labelSchedules = await req.db('label_schedules')
+      .join('labels', 'label_schedules.label_id', 'labels.id')
+      .where('label_schedules.day_of_week', dayOfWeek)
+      .select(
+        'label_schedules.id',
+        'label_schedules.label_id',
+        'labels.name as label_name',
+        'label_schedules.start_time',
+        'label_schedules.end_time'
+      );
+
+    // Process label-scheduled tasks
+    for (const ls of labelSchedules) {
+      const tasksWithLabel = await req.db('task_labels')
+        .join('tasks', 'task_labels.task_id', 'tasks.id')
+        .join('projects', 'tasks.project_id', 'projects.id')
+        .where('task_labels.label_id', ls.label_id)
+        .select(
+          'tasks.id',
+          'tasks.project_id',
+          'tasks.title',
+          'tasks.completed',
+          'tasks.is_recurring',
+          'tasks.current_counter',
+          'tasks.objective',
+          'tasks.parent_id',
+          'projects.name as project_name'
+        );
+
+      for (const task of tasksWithLabel) {
+        if (directTaskIds.has(task.id)) continue;
+
+        const allProjectTasks = await req.db('tasks')
+          .where({ project_id: task.project_id })
+          .orderBy('position', 'asc');
+
+        const targetTask = findActiveLeafOrCompletionLeaf(allProjectTasks, task.id);
+        const targetTaskId = targetTask ? targetTask.id : task.id;
+        const parentChain = buildTaskPath(allProjectTasks, targetTaskId);
+
+        const targetTaskInfo = allProjectTasks.find(t => t.id === targetTaskId) || task;
+        const displayPath = parentChain.length > 1
+          ? parentChain.slice(0, -1).map(t => t.title).join(' → ')
+          : '';
+
+        const closedSiblings = allProjectTasks
+          .filter(t => {
+            const updated = dayjs(t.updated_at);
+            return t.completed && t.id !== targetTaskId && updated.isAfter(dayjs().subtract(8, 'hour'));
+          })
+          .sort((a, b) => dayjs(b.updated_at).unix() - dayjs(a.updated_at).unix())
+          .slice(0, 3)
+          .map(t => ({
+            id: t.id,
+            title: t.title,
+            is_recurring: t.is_recurring,
+          }));
+
+        let status;
+        const todayStr = now.format('YYYY-MM-DD');
+
+        if (targetDate < todayStr) {
+          status = 'recent';
+        } else if (targetDate > todayStr) {
+          status = 'upcoming';
+        } else {
+          const startMinutes = timeToMinutes(ls.start_time);
+          const endMinutes = timeToMinutes(ls.end_time);
+
+          if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
+            status = 'active';
+          } else if (currentMinutes > endMinutes) {
+            const diff = currentMinutes - endMinutes;
+            if (diff <= 30) {
+              status = 'recent';
+            } else {
+              continue;
+            }
+          } else if (currentMinutes < startMinutes) {
+            status = 'upcoming';
+          }
+        }
+
+        entries.push({
+          schedule_id: `label-${ls.id}-${task.id}`,
+          task_id: targetTaskId,
+          start_time: ls.start_time || '00:00',
+          end_time: ls.end_time || '23:59',
+          status,
+          project_id: task.project_id,
+          project_name: task.project_name,
+          task_title: targetTask ? targetTask.title : task.title,
+          is_recurring: targetTaskInfo.is_recurring,
+          current_counter: targetTaskInfo.current_counter,
+          objective: targetTaskInfo.objective,
+          completed: targetTaskInfo.completed,
+          do_task: targetTask ? {
+            id: targetTask.id,
+            title: targetTask.title,
+            completed: targetTask.completed,
+            is_recurring: targetTask.is_recurring,
+            current_counter: targetTask.current_counter,
+            objective: targetTask.objective
+          } : null,
+          parent_chain: parentChain,
+          path: displayPath,
+          recently_closed_siblings: closedSiblings,
+          label_id: ls.label_id,
+          label_name: ls.label_name
+        });
+      }
+    }
+
     // Sort by start_time
     entries.sort((a, b) => a.start_time.localeCompare(b.start_time));
 

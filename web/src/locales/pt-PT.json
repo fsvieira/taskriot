@@ -233,6 +233,7 @@
       "week": "Semana",
       "noScheduledTasks": "Nenhuma tarefa calendarizada para este dia.",
       "recentlyClosed": "Concluídas:",
+      "labelScheduled": "Calendarizado por fase",
       "tabSchedule": "Horário",
       "tabLabels": "Fases",
       "tabScheduling": "Calendarização"
