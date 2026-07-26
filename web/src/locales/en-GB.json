@@ -223,7 +223,10 @@
       "nextTask": "Next",
       "week": "Week",
       "noScheduledTasks": "No scheduled tasks for this day.",
-      "recentlyClosed": "Recently Closed:"
+      "recentlyClosed": "Recently Closed:",
+      "tabSchedule": "Schedule",
+      "tabLabels": "Phases",
+      "tabScheduling": "Scheduling"
     },
     "stats": {
       "title": "Statistics",

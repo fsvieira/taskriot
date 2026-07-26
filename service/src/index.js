@@ -10,6 +10,7 @@ import projectStatsRoutes from './routes/projectStats.js';
 import projectSessionsRoutes from './routes/projectSessions.js';
 import queueRoutes from "./routes/queues.js";
 import scheduleRoutes from './routes/schedules.js';
+import labelRoutes from './routes/labels.js';
 import { getPlanner } from './controllers/scheduleController.js';
 
 import knexfile from '../knexfile.js';
@@ -41,6 +42,7 @@ app.use('/api/project_stats', projectStatsRoutes);
 app.use("/api/queues", queueRoutes);
 app.use("/api/project_sessions", projectSessionsRoutes);
 app.use('/api', scheduleRoutes);
+app.use('/api', labelRoutes);
 app.get('/api/planner', getPlanner);
 
 (async () => {

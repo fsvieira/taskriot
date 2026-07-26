@@ -223,7 +223,10 @@
       "nextTask": "Próxima",
       "week": "Semana",
       "noScheduledTasks": "Nenhuma tarefa calendarizada para este dia.",
-      "recentlyClosed": "Concluídas:"
+      "recentlyClosed": "Concluídas:",
+      "tabSchedule": "Horário",
+      "tabLabels": "Fases",
+      "tabScheduling": "Calendarização"
     },
     "stats": {
       "title": "Estatísticas",
