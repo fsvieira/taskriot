@@ -120,6 +120,15 @@
     "queues": {
       "nameRequired": "Name is required."
     },
+    "labels": {
+      "nameRequired": "Phase name is required.",
+      "notFound": "Phase not found.",
+      "scheduleNotFound": "Schedule not found.",
+      "invalidDayOfWeek": "Invalid day of week.",
+      "timeRequired": "Start and end time are required.",
+      "invalidTimeRange": "Start time must be before end time.",
+      "labelIdsRequired": "An array of phase IDs is required."
+    },
     "internal": {
       "generic": "An internal error occurred.",
       "createTask": "An internal error occurred while creating the task.",

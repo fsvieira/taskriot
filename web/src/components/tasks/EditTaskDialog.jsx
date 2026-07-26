@@ -19,8 +19,9 @@ import {
   Divider,
   DialogContentText,
   Collapse,
+  Autocomplete,
 } from '@mui/material';
-import { Add, Delete, Schedule, Close, ExpandMore, ExpandLess } from '@mui/icons-material';
+import { Add, Delete, Schedule, Close, ExpandMore, ExpandLess, Label as LabelIcon } from '@mui/icons-material';
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -39,6 +40,10 @@ export default function EditTaskDialog({ open, onClose, task, onSaved, onDeleted
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState('daily');
   const [objective, setObjective] = useState(1);
+
+  // Labels
+  const [allLabels, setAllLabels] = useState([]);
+  const [taskLabelIds, setTaskLabelIds] = useState([]);
 
   // Schedule fields
   const [schedules, setSchedules] = useState([]);
@@ -71,12 +76,39 @@ export default function EditTaskDialog({ open, onClose, task, onSaved, onDeleted
         setSelectedDays([new Date().getDay()]);
         setTimeSlots([{ ...defaultTimeSlot }]);
         fetchSchedules();
+        fetchLabels();
+        fetchTaskLabels();
       }
     } else {
       // Reset the flag when dialog closes so it re-initializes on next open
       initializedRef.current = false;
     }
   }, [open]);
+
+  const fetchLabels = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/labels`);
+      if (res.ok) {
+        const data = await res.json();
+        setAllLabels(data);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar labels:', err);
+    }
+  };
+
+  const fetchTaskLabels = async () => {
+    if (!task) return;
+    try {
+      const res = await fetch(`${apiUrl}/api/tasks/${task.id}/labels`);
+      if (res.ok) {
+        const data = await res.json();
+        setTaskLabelIds(data.map(l => l.id));
+      }
+    } catch (err) {
+      console.error('Erro ao buscar labels da tarefa:', err);
+    }
+  };
 
   const fetchSchedules = async () => {
     if (!task) return;
@@ -180,7 +212,17 @@ export default function EditTaskDialog({ open, onClose, task, onSaved, onDeleted
         return;
       }
 
-      // 2. Sync schedules: delete removed ones, create new ones
+      // 2. Update task labels
+      const labelsRes = await fetch(`${apiUrl}/api/tasks/${task.id}/labels`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label_ids: taskLabelIds }),
+      });
+      if (!labelsRes.ok) {
+        console.error('Falha ao atualizar labels da tarefa');
+      }
+
+      // 3. Sync schedules: delete removed ones, create new ones
       const currentIds = schedules.filter(s => !s._new).map(s => s.id);
       const initialIds = initialSchedules.map(s => s.id);
 
@@ -325,6 +367,45 @@ export default function EditTaskDialog({ open, onClose, task, onSaved, onDeleted
             </Box>
           )}
 
+          {/* === LABELS SECTION === */}
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <LabelIcon fontSize="small" />
+              Fases
+            </Box>
+          </Typography>
+
+          <Autocomplete
+            multiple
+            size="small"
+            options={allLabels}
+            getOptionLabel={(option) => option.name}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            value={allLabels.filter(l => taskLabelIds.includes(l.id))}
+            onChange={(event, newValue) => {
+              setTaskLabelIds(newValue.map(v => v.id));
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                variant="outlined"
+                label="Selecionar fases"
+                placeholder="Adicionar fase..."
+              />
+            )}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip
+                  label={option.name}
+                  size="small"
+                  {...getTagProps({ index })}
+                />
+              ))
+            }
+            sx={{ mb: 2 }}
+          />
+
           {/* === SCHEDULE SECTION - Collapsible === */}
           <Divider sx={{ my: 2 }} />
           
@@ -406,7 +487,7 @@ export default function EditTaskDialog({ open, onClose, task, onSaved, onDeleted
               <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
                 Dias da semana:
               </Typography>
-              <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                 {DAY_LABELS.map((label, index) => (
                   <Chip
                     key={index}

@@ -154,3 +154,69 @@ export const deleteLabelSchedule = async (req, res) => {
     res.status(500).json({ error: 'errors.internal.generic' });
   }
 };
+
+// === Task Labels (many-to-many) ===
+
+export const getTaskLabels = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+
+    const labels = await req.db('task_labels')
+      .join('labels', 'task_labels.label_id', 'labels.id')
+      .where('task_labels.task_id', taskId)
+      .select('labels.id', 'labels.name', 'labels.created_at', 'labels.updated_at')
+      .orderBy('labels.id', 'asc');
+
+    res.json(labels);
+  } catch (err) {
+    console.error('Erro ao buscar labels da tarefa:', err);
+    res.status(500).json({ error: 'errors.internal.generic' });
+  }
+};
+
+export const setTaskLabels = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { label_ids } = req.body;
+
+    if (!Array.isArray(label_ids)) {
+      return res.status(400).json({ error: 'errors.labels.labelIdsRequired' });
+    }
+
+    // Verify task exists
+    const task = await req.db('tasks').where({ id: taskId }).first();
+    if (!task) {
+      return res.status(404).json({ error: 'errors.tasks.taskNotFound' });
+    }
+
+    // Replace all labels for this task
+    await req.db.transaction(async (trx) => {
+      // Remove existing associations
+      await trx('task_labels').where({ task_id: taskId }).del();
+
+      // Insert new associations
+      if (label_ids.length > 0) {
+        const now = new Date().toISOString();
+        const inserts = label_ids.map(labelId => ({
+          task_id: taskId,
+          label_id: labelId,
+          created_at: now,
+          updated_at: now
+        }));
+        await trx('task_labels').insert(inserts);
+      }
+    });
+
+    // Return updated labels
+    const labels = await req.db('task_labels')
+      .join('labels', 'task_labels.label_id', 'labels.id')
+      .where('task_labels.task_id', taskId)
+      .select('labels.id', 'labels.name')
+      .orderBy('labels.id', 'asc');
+
+    res.json(labels);
+  } catch (err) {
+    console.error('Erro ao definir labels da tarefa:', err);
+    res.status(500).json({ error: 'errors.internal.generic' });
+  }
+};

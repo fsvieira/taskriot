@@ -18,6 +18,7 @@ import {
   MenuItem,
   InputLabel,
   FormControl,
+  Chip,
 } from '@mui/material';
 import { ExpandLess, ExpandMore, Add, Delete, Edit, DragIndicator } from '@mui/icons-material';
 import EditTaskDialog from './EditTaskDialog';
@@ -73,6 +74,8 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [localCounter, setLocalCounter] = useState(task.current_counter || 0);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [taskLabels, setTaskLabels] = useState([]);
+  const [labelsLoading, setLabelsLoading] = useState(true);
 
   const isRecurring = task.is_recurring;
 
@@ -138,6 +141,26 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
   };
+
+  // Fetch labels for this task
+  useEffect(() => {
+    let cancelled = false;
+    const fetchLabels = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/tasks/${task.id}/labels`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) setTaskLabels(data);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar labels:', err);
+      } finally {
+        if (!cancelled) setLabelsLoading(false);
+      }
+    };
+    fetchLabels();
+    return () => { cancelled = true; };
+  }, [task.id]);
 
   const handleEditSavedOrDeleted = () => {
     // Refresh the tree after edit or delete (modal already did the API calls)
@@ -252,14 +275,34 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
           )}
 
           <ListItemText
-            primary={parseTextWithLinks(task.title)}
-            sx={{
-              textDecoration: (checked || (isRecurring && localCounter >= task.objective)) ? 'line-through' : 'none',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              flex: 1,
-              pr: '7.5em',
-            }}
+            primary={
+              <Box>
+                {!labelsLoading && taskLabels.length > 0 && (
+                  <Box sx={{ display: 'flex', gap: 0.4, flexWrap: 'wrap', mb: 0.3 }}>
+                    {taskLabels.map(label => (
+                      <Chip
+                        key={label.id}
+                        label={label.name}
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: '0.7rem',
+                          fontWeight: 500,
+                        }}
+                      />
+                    ))}
+                  </Box>
+                )}
+                <Box component="span" sx={{
+                  textDecoration: (checked || (isRecurring && localCounter >= task.objective)) ? 'line-through' : 'none',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}>
+                  {parseTextWithLinks(task.title)}
+                </Box>
+              </Box>
+            }
+            sx={{ flex: 1, pr: '7.5em' }}
           />
         </Box>
       </ListItem>

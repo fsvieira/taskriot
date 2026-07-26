@@ -120,6 +120,15 @@
     "queues": {
       "nameRequired": "O nome é obrigatório."
     },
+    "labels": {
+      "nameRequired": "O nome da fase é obrigatório.",
+      "notFound": "Fase não encontrada.",
+      "scheduleNotFound": "Horário não encontrado.",
+      "invalidDayOfWeek": "Dia da semana inválido.",
+      "timeRequired": "Hora de início e fim são obrigatórias.",
+      "invalidTimeRange": "A hora de início deve ser anterior à hora de fim.",
+      "labelIdsRequired": "É necessário um array de IDs de fases."
+    },
     "internal": {
       "generic": "Ocorreu um erro interno.",
       "createTask": "Ocorreu um erro interno ao criar a tarefa.",
