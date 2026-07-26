@@ -76,6 +76,7 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [taskLabels, setTaskLabels] = useState([]);
   const [labelsLoading, setLabelsLoading] = useState(true);
+  const [labelsRefreshKey, setLabelsRefreshKey] = useState(0);
 
   const isRecurring = task.is_recurring;
 
@@ -145,6 +146,7 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
   // Fetch labels for this task
   useEffect(() => {
     let cancelled = false;
+    setLabelsLoading(true);
     const fetchLabels = async () => {
       try {
         const res = await fetch(`${apiUrl}/api/tasks/${task.id}/labels`);
@@ -160,9 +162,11 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
     };
     fetchLabels();
     return () => { cancelled = true; };
-  }, [task.id]);
+  }, [task.id, labelsRefreshKey]);
 
   const handleEditSavedOrDeleted = () => {
+    // Refresh labels after edit
+    setLabelsRefreshKey(prev => prev + 1);
     // Refresh the tree after edit or delete (modal already did the API calls)
     if (onEditTask) {
       // Trigger a refetch from parent by calling with empty updates
