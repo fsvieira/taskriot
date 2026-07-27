@@ -119,6 +119,13 @@ export const getTaskSchedules = async (req, res) => {
   }
 };
 
+// === Helper: calculate week of month (1-4, clamped) ===
+function getMonthWeek(date) {
+  const firstDay = date.startOf('month');
+  const diff = date.diff(firstDay, 'day');
+  return Math.min(Math.floor(diff / 7) + 1, 4);
+}
+
 // === Helper: resolve schedule entries for a given date ===
 
 /**
@@ -355,6 +362,14 @@ export const getPlanner = async (req, res) => {
         'label_schedules.end_time'
       );
 
+    // Fetch project schedules for filtering (month + week)
+    const targetMonth = dayjs(targetDate).month(); // 0-11
+    const targetWeek = getMonthWeek(dayjs(targetDate));
+    const activeProjectSchedules = await req.db('project_schedules')
+      .where({ month_index: targetMonth, week: targetWeek })
+      .select('project_id');
+    const activeProjectIds = new Set(activeProjectSchedules.map(ps => ps.project_id));
+
     // Process label-scheduled tasks
     for (const ls of labelSchedules) {
       const tasksWithLabel = await req.db('task_labels')
@@ -375,6 +390,9 @@ export const getPlanner = async (req, res) => {
 
       for (const task of tasksWithLabel) {
         if (directTaskIds.has(task.id)) continue;
+
+        // Filter by project schedule: only show if project is active for this month+week
+        if (!activeProjectIds.has(task.project_id)) continue;
 
         const allProjectTasks = await req.db('tasks')
           .where({ project_id: task.project_id })

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -12,9 +12,13 @@ import {
   LinearProgress,
   Paper,
   Stack,
+  Button,
 } from '@mui/material';
+import { Save } from '@mui/icons-material';
 import { observer } from 'mobx-react-lite';
 import { projectStore } from '../../stores/ProjectStore';
+
+const apiUrl = import.meta.env.VITE_API_URL;
 
 // Split months into 3 groups of 4
 const MONTH_GROUPS = [
@@ -64,6 +68,16 @@ const stickyBodySx = {
 // Build a key from project + month + week
 function cellKey(projectId, monthIdx, week) {
   return `${projectId}-${monthIdx}-${week}`;
+}
+
+// Parse a cell key back into project_id, month_index, week
+function parseCellKey(key) {
+  const parts = key.split('-');
+  return {
+    projectId: Number(parts[0]),
+    monthIdx: Number(parts[1]),
+    week: Number(parts[2]),
+  };
 }
 
 function MonthTable({ months, startMonthIdx, projects, schedule, onToggle }) {
@@ -185,11 +199,27 @@ function MonthTable({ months, startMonthIdx, projects, schedule, onToggle }) {
 const ProjectScheduler = observer(() => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   // Mock data: { [cellKey]: true/false }
   const [schedule, setSchedule] = useState({});
 
+  const fetchSchedules = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/projects/schedules`);
+      const data = await res.json();
+      const schedMap = {};
+      for (const s of data) {
+        const key = cellKey(s.project_id, s.month_index, s.week);
+        schedMap[key] = true;
+      }
+      setSchedule(schedMap);
+    } catch (err) {
+      console.error('Erro ao buscar project schedules:', err);
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchProjects = async () => {
+    const init = async () => {
       try {
         await projectStore.fetchProjects();
       } catch (err) {
@@ -198,8 +228,9 @@ const ProjectScheduler = observer(() => {
         setLoading(false);
       }
     };
-    fetchProjects();
-  }, []);
+    init();
+    fetchSchedules();
+  }, [fetchSchedules]);
 
   useEffect(() => {
     // Filter projects: exclude archived and completed
@@ -217,13 +248,46 @@ const ProjectScheduler = observer(() => {
     }));
   };
 
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const schedules = Object.entries(schedule)
+        .filter(([, value]) => value) // only checked ones
+        .map(([key]) => {
+          const { projectId, monthIdx, week } = parseCellKey(key);
+          return { project_id: projectId, month_index: monthIdx, week };
+        });
+
+      await fetch(`${apiUrl}/api/projects/schedules`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schedules }),
+      });
+    } catch (err) {
+      console.error('Erro ao salvar project schedules:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return <LinearProgress />;
 
   return (
     <Box>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        Projectos por Mês/Semana
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6">
+          Projectos por Mês/Semana
+        </Typography>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<Save />}
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? 'A guardar...' : 'Guardar'}
+        </Button>
+      </Box>
 
       <Stack spacing={3}>
         {MONTH_GROUPS.map((group) => (

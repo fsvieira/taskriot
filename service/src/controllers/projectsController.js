@@ -92,10 +92,15 @@ export const updateProject = async (req, res) => {
     state
   } = req.body;
 
-  await req.db('projects').where({ id }).update({
-    name,
-    state
-  });
+  const updates = {};
+  if (name !== undefined) updates.name = name;
+  if (state !== undefined) updates.state = state;
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: 'No fields to update' });
+  }
+
+  await req.db('projects').where({ id }).update(updates);
 
   res.sendStatus(200);
 };
