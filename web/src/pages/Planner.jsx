@@ -10,10 +10,12 @@ import {
   CalendarMonth,
   Label,
   Schedule,
+  Assignment,
 } from '@mui/icons-material';
 import ScheduleView from '../components/planner/ScheduleView';
 import LabelsManager from '../components/planner/LabelsManager';
 import LabelScheduler from '../components/planner/LabelScheduler';
+import ProjectScheduler from '../components/planner/ProjectScheduler';
 
 const Planner = () => {
   const { t } = useTranslation();
@@ -49,11 +51,17 @@ const Planner = () => {
           iconPosition="start"
           label={t('pages.planner.tabScheduling')}
         />
+        <Tab
+          icon={<Assignment />}
+          iconPosition="start"
+          label={t('pages.planner.tabProjects')}
+        />
       </Tabs>
 
       {tabIndex === 0 && <ScheduleView />}
       {tabIndex === 1 && <LabelsManager />}
       {tabIndex === 2 && <LabelScheduler />}
+      {tabIndex === 3 && <ProjectScheduler />}
     </Box>
   );
 };

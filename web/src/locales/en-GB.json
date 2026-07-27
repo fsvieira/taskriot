@@ -236,7 +236,8 @@
       "labelScheduled": "Label Scheduled",
       "tabSchedule": "Schedule",
       "tabLabels": "Phases",
-      "tabScheduling": "Scheduling"
+      "tabScheduling": "Scheduling",
+      "tabProjects": "Projects"
     },
     "stats": {
       "title": "Statistics",

@@ -236,7 +236,8 @@
       "labelScheduled": "Calendarizado por fase",
       "tabSchedule": "Horário",
       "tabLabels": "Fases",
-      "tabScheduling": "Calendarização"
+      "tabScheduling": "Calendarização",
+      "tabProjects": "Projectos"
     },
     "stats": {
       "title": "Estatísticas",
