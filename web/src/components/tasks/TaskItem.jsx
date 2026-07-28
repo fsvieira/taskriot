@@ -20,7 +20,7 @@ import {
   FormControl,
   Chip,
 } from '@mui/material';
-import { ExpandLess, ExpandMore, Add, Delete, Tune, DragIndicator } from '@mui/icons-material';
+import { ExpandLess, ExpandMore, Add, Delete, Tune, DragIndicator, Check, Close } from '@mui/icons-material';
 import TaskSettingsDialog from './TaskSettingsDialog';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -174,12 +174,17 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
   };
 
   const handleInlineEditKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && e.ctrlKey) {
       e.preventDefault();
       saveInlineEdit();
     } else if (e.key === 'Escape') {
-      setEditingTitle(false);
+      cancelInlineEdit();
     }
+  };
+
+  const cancelInlineEdit = () => {
+    setEditTitleValue(task.title);
+    setEditingTitle(false);
   };
 
   // Fetch labels for this task
@@ -334,26 +339,45 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
                   </Box>
                 )}
                 {editingTitle ? (
-                  <TextField
-                    ref={editInputRef}
-                    value={editTitleValue}
-                    onChange={(e) => setEditTitleValue(e.target.value)}
-                    onBlur={saveInlineEdit}
-                    onKeyDown={handleInlineEditKeyDown}
-                    size="small"
-                    fullWidth
-                    multiline
-                    minRows={1}
-                    maxRows={4}
-                    autoFocus
-                    onClick={(e) => e.stopPropagation()}
-                    sx={{
-                      '& .MuiInputBase-root': {
-                        fontSize: 'inherit',
-                        bgcolor: 'white',
-                      },
-                    }}
-                  />
+                  <Box>
+                    <TextField
+                      ref={editInputRef}
+                      value={editTitleValue}
+                      onChange={(e) => setEditTitleValue(e.target.value)}
+                      onKeyDown={handleInlineEditKeyDown}
+                      size="small"
+                      fullWidth
+                      multiline
+                      minRows={1}
+                      maxRows={4}
+                      autoFocus
+                      onClick={(e) => e.stopPropagation()}
+                      sx={{
+                        '& .MuiInputBase-root': {
+                          fontSize: 'inherit',
+                          bgcolor: 'white',
+                        },
+                      }}
+                    />
+                    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={saveInlineEdit}
+                        startIcon={<Check />}
+                      >
+                        Salvar
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={cancelInlineEdit}
+                        startIcon={<Close />}
+                      >
+                        Cancelar
+                      </Button>
+                    </Box>
+                  </Box>
                 ) : (
                   <Box
                     component="span"

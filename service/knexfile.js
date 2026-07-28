@@ -26,5 +26,15 @@ export default {
     migrations: {
       directory: './migrations'
     }
+  },
+  production: {
+    client: 'better-sqlite3',
+    connection: {
+      filename: process.env.DATABASE_PATH
+    },
+    useNullAsDefault: true,
+    migrations: {
+      directory: './migrations'
+    }
   }
 };
