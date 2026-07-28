@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ListItem,
   Checkbox,
@@ -20,8 +20,8 @@ import {
   FormControl,
   Chip,
 } from '@mui/material';
-import { ExpandLess, ExpandMore, Add, Delete, Edit, DragIndicator } from '@mui/icons-material';
-import EditTaskDialog from './EditTaskDialog';
+import { ExpandLess, ExpandMore, Add, Delete, Tune, DragIndicator } from '@mui/icons-material';
+import TaskSettingsDialog from './TaskSettingsDialog';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -73,10 +73,15 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [localCounter, setLocalCounter] = useState(task.current_counter || 0);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [taskLabels, setTaskLabels] = useState([]);
   const [labelsLoading, setLabelsLoading] = useState(true);
   const [labelsRefreshKey, setLabelsRefreshKey] = useState(0);
+
+  // Inline editing state
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editTitleValue, setEditTitleValue] = useState(task.title);
+  const editInputRef = useRef(null);
 
   const isRecurring = task.is_recurring;
 
@@ -143,6 +148,40 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
     setDeleteDialogOpen(false);
   };
 
+  // Inline edit handlers
+  const startEditing = () => {
+    setEditTitleValue(task.title);
+    setEditingTitle(true);
+  };
+
+  const saveInlineEdit = async () => {
+    const newTitle = editTitleValue.trim();
+    if (!newTitle || newTitle === task.title) {
+      setEditingTitle(false);
+      return;
+    }
+    try {
+      await fetch(`${apiUrl}/api/tasks/${task.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle }),
+      });
+      if (onEditTask) onEditTask(task.id, {});
+    } catch (err) {
+      console.error('Erro ao editar tarefa:', err);
+    }
+    setEditingTitle(false);
+  };
+
+  const handleInlineEditKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      saveInlineEdit();
+    } else if (e.key === 'Escape') {
+      setEditingTitle(false);
+    }
+  };
+
   // Fetch labels for this task
   useEffect(() => {
     let cancelled = false;
@@ -164,12 +203,9 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
     return () => { cancelled = true; };
   }, [task.id, labelsRefreshKey]);
 
-  const handleEditSavedOrDeleted = () => {
-    // Refresh labels after edit
+  const handleSettingsSavedOrDeleted = () => {
     setLabelsRefreshKey(prev => prev + 1);
-    // Refresh the tree after edit or delete (modal already did the API calls)
     if (onEditTask) {
-      // Trigger a refetch from parent by calling with empty updates
       onEditTask(task.id, {});
     }
   };
@@ -192,16 +228,6 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
         sx={{ pl: 0, pr: 0 }}
         secondaryAction={
           <>
-            <IconButton
-              edge="end"
-              onClick={() => setEditDialogOpen(true)}
-              size="small"
-              title="Editar tarefa"
-              sx={{ mr: 1 }}
-            >
-              <Edit />
-            </IconButton>
-
             {level > 0 && (
               <IconButton
                 edge="end"
@@ -222,6 +248,16 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
               sx={{ mr: 1 }}
             >
               <Add />
+            </IconButton>
+
+            <IconButton
+              edge="end"
+              onClick={() => setSettingsDialogOpen(true)}
+              size="small"
+              title="Configurações"
+              sx={{ mr: 1 }}
+            >
+              <Tune />
             </IconButton>
 
             {task.subtasks?.length > 0 && (
@@ -297,16 +333,48 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
                     ))}
                   </Box>
                 )}
-                <Box component="span" sx={{
-                  textDecoration: (checked || (isRecurring && localCounter >= task.objective)) ? 'line-through' : 'none',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                }}>
-                  {parseTextWithLinks(task.title)}
-                </Box>
+                {editingTitle ? (
+                  <TextField
+                    ref={editInputRef}
+                    value={editTitleValue}
+                    onChange={(e) => setEditTitleValue(e.target.value)}
+                    onBlur={saveInlineEdit}
+                    onKeyDown={handleInlineEditKeyDown}
+                    size="small"
+                    fullWidth
+                    multiline
+                    minRows={1}
+                    maxRows={4}
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        fontSize: 'inherit',
+                        bgcolor: 'white',
+                      },
+                    }}
+                  />
+                ) : (
+                  <Box
+                    component="span"
+                    onClick={startEditing}
+                    sx={{
+                      textDecoration: (checked || (isRecurring && localCounter >= task.objective)) ? 'line-through' : 'none',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: 'rgba(0,0,0,0.04)',
+                        borderRadius: 0.5,
+                      },
+                    }}
+                  >
+                    {parseTextWithLinks(task.title)}
+                  </Box>
+                )}
               </Box>
             }
-            sx={{ flex: 1, pr: '7.5em' }}
+            sx={{ flex: 1, pr: '5em' }}
           />
         </Box>
       </ListItem>
@@ -344,7 +412,7 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
                 onChange={(e) => setSubtaskData({ ...subtaskData, is_recurring: e.target.checked })}
               />
             }
-            label="Recorrente"
+            label="Objectivo"
             sx={{ mb: 1 }}
           />
           {subtaskData.is_recurring && (
@@ -434,13 +502,13 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
         </DialogActions>
       </Dialog>
 
-      {/* Edit Task Dialog - unified modal for editing task details and schedules */}
-      <EditTaskDialog
-        open={editDialogOpen}
-        onClose={() => setEditDialogOpen(false)}
+      {/* Task Settings Dialog - inline edit for title, labels and objective/habit */}
+      <TaskSettingsDialog
+        open={settingsDialogOpen}
+        onClose={() => setSettingsDialogOpen(false)}
         task={task}
-        onSaved={handleEditSavedOrDeleted}
-        onDeleted={handleEditSavedOrDeleted}
+        onSaved={handleSettingsSavedOrDeleted}
+        onDeleted={handleSettingsSavedOrDeleted}
       />
     </>
   );
