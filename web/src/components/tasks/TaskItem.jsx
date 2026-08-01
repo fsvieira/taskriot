@@ -20,7 +20,7 @@ import {
   FormControl,
   Chip,
 } from '@mui/material';
-import { ExpandLess, ExpandMore, Add, Delete, Tune, DragIndicator, Check, Close } from '@mui/icons-material';
+import { ExpandLess, ExpandMore, Add, Delete, Tune, DragIndicator, Check, Close, FileCopy } from '@mui/icons-material';
 import TaskSettingsDialog from './TaskSettingsDialog';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -77,6 +77,7 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
   const [taskLabels, setTaskLabels] = useState([]);
   const [labelsLoading, setLabelsLoading] = useState(true);
   const [labelsRefreshKey, setLabelsRefreshKey] = useState(0);
+  const [copyingMarkdown, setCopyingMarkdown] = useState(false);
 
   // Inline editing state
   const [editingTitle, setEditingTitle] = useState(false);
@@ -215,6 +216,23 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
     }
   };
 
+  const copyMarkdown = async () => {
+    try {
+      setCopyingMarkdown(true);
+      const response = await fetch(`${apiUrl}/api/tasks/${task.id}/markdown`);
+      if (!response.ok) {
+        console.error('Falha ao buscar markdown');
+        return;
+      }
+      const data = await response.json();
+      await navigator.clipboard.writeText(data.markdown || '');
+    } catch (err) {
+      console.error('Erro ao copiar markdown:', err);
+    } finally {
+      setCopyingMarkdown(false);
+    }
+  };
+
   return (
     <>
       <Box
@@ -253,6 +271,17 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
               sx={{ mr: 1 }}
             >
               <Add />
+            </IconButton>
+
+            <IconButton
+              edge="end"
+              onClick={copyMarkdown}
+              size="small"
+              title="Copiar markdown"
+              sx={{ mr: 1 }}
+              disabled={copyingMarkdown}
+            >
+              <FileCopy />
             </IconButton>
 
             <IconButton

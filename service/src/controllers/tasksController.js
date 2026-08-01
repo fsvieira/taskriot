@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore.js';
 import isoWeek from 'dayjs/plugin/isoWeek.js';
+import { generateTaskMarkdown } from '../utils/taskMarkdown.js';
 dayjs.extend(isSameOrBefore);
 dayjs.extend(isoWeek);
 
@@ -179,6 +180,38 @@ export const getTaskWithChildren = async (req, res) => {
   } catch (err) {
     console.error('Erro ao buscar tarefas:', err);
     res.status(500).json({ error: 'errors.internal.fetchTasks' });
+  }
+};
+
+export const getTaskMarkdown = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const id = Number(taskId);
+    const task = await req.db('tasks').where({ id }).first();
+
+    if (!task) {
+      return res.status(404).json({ error: 'errors.tasks.taskNotFound' });
+    }
+
+    const ancestors = [];
+    let current = task;
+
+    while (current) {
+      ancestors.unshift(current.title);
+      current = current.parent_id
+        ? await req.db('tasks').where({ id: current.parent_id }).first()
+        : null;
+    }
+
+    const ancestorPath = ancestors.join(' > ');
+    const allTasks = await req.db('tasks').orderBy('position', 'asc');
+    const items = allTasks.map(t => ({ ...t }));
+    const markdown = generateTaskMarkdown({ ancestorPath, items, rootId: id });
+
+    res.status(200).json({ markdown });
+  } catch (err) {
+    console.error('Erro ao gerar markdown:', err);
+    res.status(500).json({ error: 'errors.internal.generic' });
   }
 };
 

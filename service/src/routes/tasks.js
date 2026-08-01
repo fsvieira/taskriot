@@ -7,7 +7,8 @@ import {
   updateHabitsTasksOrder,
   deleteTaskRecursively,
   updateTask,
-  closeTaskRecursively
+  closeTaskRecursively,
+  getTaskMarkdown
 } from '../controllers/tasksController.js';
 
 const router = express.Router();
@@ -20,5 +21,6 @@ router.post('/', createTask);
 router.get('/project/:projectId/:taskId?', getTaskWithChildren);
 router.put('/:taskId', updateTask);
 router.put('/:taskId/close-recursive', closeTaskRecursively);
+router.get('/:taskId/markdown', getTaskMarkdown);
 
 export default router;
