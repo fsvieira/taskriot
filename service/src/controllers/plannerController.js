@@ -129,6 +129,10 @@ export const getPlanner = async (req, res) => {
         const parentChain = buildTaskPath(allProjectTasks, targetTaskId);
 
         const targetTaskInfo = allProjectTasks.find(t => t.id === targetTaskId) || task;
+        if (targetTaskInfo.is_recurring && (targetTaskInfo.current_counter || 0) >= targetTaskInfo.objective) {
+          continue;
+        }
+
         const displayPath = parentChain.length > 1
           ? parentChain.slice(0, -1).map(t => t.title).join(' → ')
           : '';
