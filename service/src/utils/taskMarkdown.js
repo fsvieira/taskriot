@@ -11,7 +11,17 @@ export const buildChecklist = (items, parentId = null, indent = '') => {
 };
 
 export const generateTaskMarkdown = ({ ancestorPath, items, rootId }) => {
-  const checklist = buildChecklist(items, rootId).join('\n');
+  let checklistItems = buildChecklist(items, rootId);
+  if (checklistItems.length === 0 && rootId != null) {
+    const rootTask = items.find(t => t.id === rootId);
+    if (rootTask) {
+      const state = rootTask.is_recurring
+        ? `[${rootTask.current_counter >= rootTask.objective ? 'x' : ' '}]`
+        : `[${rootTask.completed ? 'x' : ' '}]`;
+      checklistItems = [`- ${state} ${rootTask.title}`];
+    }
+  }
+  const checklist = checklistItems.join('\n');
   const pathLine = ancestorPath ? `${ancestorPath.replace(/ *> */g, ' -> ')}\n\n` : '';
   return `# Task Context\n\n${pathLine}## TODOS\n\n${checklist}`;
 };
