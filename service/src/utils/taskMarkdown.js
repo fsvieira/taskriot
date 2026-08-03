@@ -1,27 +1,47 @@
-export const buildChecklist = (items, parentId = null, indent = '') => {
-  const direct = items.filter(t => t.parent_id === parentId);
-  return direct.map(t => {
-    const state = t.is_recurring
-      ? `[${t.current_counter >= t.objective ? 'x' : ' '}]`
-      : `[${t.completed ? 'x' : ' '}]`;
-    const base = `${indent}- ${state} ${t.title}`;
-    const childBlock = buildChecklist(items, t.id, `${indent}  `);
-    return childBlock.length ? `${base}\n${childBlock.join('\n')}` : base;
-  });
+const buildChecklist = (items, parentId, depth = 1) => {
+  const indent = '  '.repeat(depth - 1);
+  const lines = [];
+
+  for (const task of items.filter(t => t.parent_id === parentId)) {
+    const state = task.is_recurring
+      ? `[${task.current_counter >= task.objective ? 'x' : ' '}]`
+      : `[${task.completed ? 'x' : ' '}]`;
+    lines.push(`${indent}${state} ${task.title}`);
+
+    const childLines = buildChecklist(items, task.id, depth + 1);
+    if (childLines.length) {
+      lines.push(...childLines);
+    }
+  }
+
+  return lines;
 };
 
 export const generateTaskMarkdown = ({ ancestorPath, items, rootId }) => {
-  let checklistItems = buildChecklist(items, rootId);
-  if (checklistItems.length === 0 && rootId != null) {
-    const rootTask = items.find(t => t.id === rootId);
+  const lines = [];
+
+  if (ancestorPath) {
+    lines.push('# Task Context');
+    lines.push('');
+    lines.push(ancestorPath);
+    lines.push('');
+  }
+
+  const checklist = buildChecklist(items, Number(rootId));
+  lines.push('## TODO');
+  lines.push('');
+
+  if (checklist.length) {
+    lines.push(...checklist);
+  } else {
+    const rootTask = items.find(t => t.id === Number(rootId));
     if (rootTask) {
       const state = rootTask.is_recurring
         ? `[${rootTask.current_counter >= rootTask.objective ? 'x' : ' '}]`
         : `[${rootTask.completed ? 'x' : ' '}]`;
-      checklistItems = [`- ${state} ${rootTask.title}`];
+      lines.push(`${state} ${rootTask.title}`);
     }
   }
-  const checklist = checklistItems.join('\n');
-  const pathLine = ancestorPath ? `${ancestorPath.replace(/ *> */g, ' -> ')}\n\n` : '';
-  return `# Task Context\n\n${pathLine}## TODOS\n\n${checklist}`;
+
+  return lines.join('\n');
 };

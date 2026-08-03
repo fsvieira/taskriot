@@ -207,21 +207,6 @@ export default function TaskTree({ project, taskID }) {
     }
   };
 
-  // Função para copiar tarefa - adiciona a nova tarefa à lista
-  const copyTask = (newTask) => {
-    setTasks((prev) => {
-      const newTasks = [...prev, newTask];
-      return newTasks.sort((a, b) => {
-        const aEffective = a.completed || (a.is_recurring && a.current_counter >= a.objective);
-        const bEffective = b.completed || (b.is_recurring && b.current_counter >= b.objective);
-        if (aEffective !== bEffective) {
-          return aEffective ? 1 : -1;
-        }
-        return a.position - b.position;
-      });
-    });
-  };
-
   // Função para apagar tarefa
   const deleteTask = async (taskId) => {
     try {
@@ -517,7 +502,6 @@ export default function TaskTree({ project, taskID }) {
                 onEditTask={onEditTask}
                 onDeleteTask={deleteTask}
                 onToggleDone={toggleDone}
-                onCopyTask={copyTask}
               />
             ))}
 

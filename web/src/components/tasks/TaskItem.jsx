@@ -22,7 +22,7 @@ import {
   Snackbar,
   Alert,
 } from '@mui/material';
-import { ExpandLess, ExpandMore, Add, Delete, Tune, DragIndicator, Check, Close, FileCopy, ContentCopy } from '@mui/icons-material';
+import { ExpandLess, ExpandMore, Add, Delete, Tune, DragIndicator, Check, Close, FileCopy } from '@mui/icons-material';
 import TaskSettingsDialog from './TaskSettingsDialog';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -57,7 +57,7 @@ const parseTextWithLinks = (text) => {
   });
 };
 
-export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, onToggleDone, onEditTask, onCopyTask }) {
+export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, onToggleDone, onEditTask }) {
   const [checked, setChecked] = useState(Boolean(task.completed));
   const [open, setOpen] = useState(level === 0);
 
@@ -80,7 +80,6 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
   const [labelsLoading, setLabelsLoading] = useState(true);
   const [labelsRefreshKey, setLabelsRefreshKey] = useState(0);
   const [copyingMarkdown, setCopyingMarkdown] = useState(false);
-  const [copyingTask, setCopyingTask] = useState(false);
   const [copyToastOpen, setCopyToastOpen] = useState(false);
 
   // Inline editing state
@@ -238,36 +237,6 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
     }
   };
 
-  const copyTask = async () => {
-    try {
-      setCopyingTask(true);
-      const response = await fetch(`${apiUrl}/api/tasks/${task.id}/copy`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) {
-        console.error('Falha ao copiar tarefa');
-        return;
-      }
-      const newTask = await response.json();
-      // If the copied task has no children and is not a root task, normalize parent to null
-      if (newTask.parent_id !== null && !newTask.subtasks?.length) {
-        await fetch(`${apiUrl}/api/tasks/${newTask.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parent_id: null }),
-        });
-      }
-      if (onCopyTask) onCopyTask(newTask);
-      if (onEditTask) onEditTask(newTask.id, {});
-      setCopyToastOpen(true);
-    } catch (err) {
-      console.error('Erro ao copiar tarefa:', err);
-    } finally {
-      setCopyingTask(false);
-    }
-  };
-
   return (
     <>
       <Box
@@ -306,17 +275,6 @@ export default function TaskItem({ task, level = 0, onAddSubtask, onDeleteTask, 
               sx={{ mr: 1 }}
             >
               <Add />
-            </IconButton>
-
-            <IconButton
-              edge="end"
-              onClick={copyTask}
-              size="small"
-              title="Copiar tarefa"
-              sx={{ mr: 1 }}
-              disabled={copyingTask}
-            >
-              <ContentCopy />
             </IconButton>
 
             <IconButton

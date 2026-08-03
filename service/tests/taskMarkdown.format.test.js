@@ -14,22 +14,22 @@ console.log('MARKDOWN:\n' + markdown + '\n');
 let passed = true;
 const assertions = [];
 
-if (markdown.startsWith('# Task Context') && markdown.includes('Projeto -> Tarefa A')) {
-  assertions.push('Título fixo e caminho com -> presente.');
+if (markdown.startsWith('# Task Context') && markdown.includes('Projeto > Tarefa A')) {
+  assertions.push('Título fixo e caminho presente.');
 } else {
   passed = false;
   assertions.push('FALHA: título fixo ou caminho ausente/incorreto.');
 }
 
-if (/^## TODOS$/m.test(markdown)) {
-  assertions.push('Seção ## TODOS presente.');
+if (/^## TODO$/m.test(markdown)) {
+  assertions.push('Seção ## TODO presente.');
 } else {
   passed = false;
-  assertions.push('FALHA: seção ## TODOS ausente.');
+  assertions.push('FALHA: seção ## TODO ausente.');
 }
 
-const checklist = markdown.split('## TODOS')[1] || '';
-if (checklist.includes('- [ ] Subtarefa A1') && !checklist.includes('Tarefa B')) {
+const checklist = markdown.split('## TODO')[1] || '';
+if (checklist.includes('[ ] Subtarefa A1') && !checklist.includes('Tarefa B')) {
   assertions.push('Checklist inclui apenas filhos diretos e netos, sem irmãos.');
 } else {
   passed = false;
