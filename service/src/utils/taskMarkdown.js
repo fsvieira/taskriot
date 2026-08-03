@@ -27,20 +27,20 @@ export const generateTaskMarkdown = ({ ancestorPath, items, rootId }) => {
     lines.push('');
   }
 
-  const checklist = buildChecklist(items, Number(rootId));
   lines.push('## TODO');
   lines.push('');
 
+  const rootTask = items.find(t => t.id === Number(rootId));
+  if (rootTask) {
+    const state = rootTask.is_recurring
+      ? `[${rootTask.current_counter >= rootTask.objective ? 'x' : ' '}]`
+      : `[${rootTask.completed ? 'x' : ' '}]`;
+    lines.push(`${state} ${rootTask.title}`);
+  }
+
+  const checklist = buildChecklist(items, Number(rootId), 2);
   if (checklist.length) {
     lines.push(...checklist);
-  } else {
-    const rootTask = items.find(t => t.id === Number(rootId));
-    if (rootTask) {
-      const state = rootTask.is_recurring
-        ? `[${rootTask.current_counter >= rootTask.objective ? 'x' : ' '}]`
-        : `[${rootTask.completed ? 'x' : ' '}]`;
-      lines.push(`${state} ${rootTask.title}`);
-    }
   }
 
   return lines.join('\n');
