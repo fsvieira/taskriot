@@ -3,10 +3,8 @@ const buildChecklist = (items, parentId, depth = 1) => {
   const lines = [];
 
   for (const task of items.filter(t => t.parent_id === parentId)) {
-    const state = task.is_recurring
-      ? `[${task.current_counter >= task.objective ? 'x' : ' '}]`
-      : `[${task.completed ? 'x' : ' '}]`;
-    lines.push(`${indent}${state} ${task.title}`);
+    const checkbox = task.completed ? 'X' : ' ';
+    lines.push(`${indent}* [${checkbox}] ${task.title}`);
 
     const childLines = buildChecklist(items, task.id, depth + 1);
     if (childLines.length) {
@@ -32,10 +30,8 @@ export const generateTaskMarkdown = ({ ancestorPath, items, rootId }) => {
 
   const rootTask = items.find(t => t.id === Number(rootId));
   if (rootTask) {
-    const state = rootTask.is_recurring
-      ? `[${rootTask.current_counter >= rootTask.objective ? 'x' : ' '}]`
-      : `[${rootTask.completed ? 'x' : ' '}]`;
-    lines.push(`${state} ${rootTask.title}`);
+    const checkbox = rootTask.completed ? 'X' : ' ';
+    lines.push(`* [${checkbox}] ${rootTask.title}`);
   }
 
   const checklist = buildChecklist(items, Number(rootId), 2);

@@ -29,7 +29,7 @@ if (/^## TODO$/m.test(markdown)) {
 }
 
 const checklist = markdown.split('## TODO')[1] || '';
-if (checklist.includes('[ ] Subtarefa A1') && !checklist.includes('Tarefa B')) {
+if (checklist.includes('* [ ] Subtarefa A1') && !checklist.includes('Tarefa B')) {
   assertions.push('Checklist inclui apenas filhos diretos e netos, sem irmãos.');
 } else {
   passed = false;
